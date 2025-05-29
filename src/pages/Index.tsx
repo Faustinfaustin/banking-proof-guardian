@@ -1,12 +1,97 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, Users, FileCheck, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
+import AccountManager from '@/components/AccountManager';
+import ProofGenerator from '@/components/ProofGenerator';
+import ComplianceVerifier from '@/components/ComplianceVerifier';
+import SystemOverview from '@/components/SystemOverview';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState('overview');
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+      {/* Header */}
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">BankGuard ZKP</h1>
+                <p className="text-sm text-blue-200">Zero-Knowledge Banking Compliance</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-400">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Spartan Protocol Ready
+              </Badge>
+              <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-400">
+                <Lock className="w-3 h-3 mr-1" />
+                Trustless Setup
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            Banking Compliance with Zero-Knowledge Proofs
+          </h2>
+          <p className="text-blue-200 text-lg max-w-3xl">
+            Prove regulatory compliance without revealing sensitive financial data. 
+            Our system uses the Spartan zkSNARK protocol to verify that no account exceeds $100,000 
+            while maintaining complete privacy.
+          </p>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md">
+            <TabsTrigger value="overview" className="text-white data-[state=active]:bg-white/20">
+              <FileCheck className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="accounts" className="text-white data-[state=active]:bg-white/20">
+              <Users className="w-4 h-4 mr-2" />
+              Accounts
+            </TabsTrigger>
+            <TabsTrigger value="proof" className="text-white data-[state=active]:bg-white/20">
+              <Shield className="w-4 h-4 mr-2" />
+              Generate Proof
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="text-white data-[state=active]:bg-white/20">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Verify
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <SystemOverview />
+          </TabsContent>
+
+          <TabsContent value="accounts">
+            <AccountManager />
+          </TabsContent>
+
+          <TabsContent value="proof">
+            <ProofGenerator />
+          </TabsContent>
+
+          <TabsContent value="verify">
+            <ComplianceVerifier />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 };
