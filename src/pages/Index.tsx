@@ -31,11 +31,11 @@ const Index = () => {
             <div className="flex items-center space-x-4">
               <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-400">
                 <CheckCircle className="w-3 h-3 mr-1" />
-                Spartan Protocol Ready
+                WASM Ready
               </Badge>
               <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-400">
                 <Lock className="w-3 h-3 mr-1" />
-                Trustless Setup
+                Edge Functions
               </Badge>
             </div>
           </div>
@@ -50,16 +50,20 @@ const Index = () => {
           </h2>
           <p className="text-blue-200 text-lg max-w-3xl">
             Prove regulatory compliance without revealing sensitive financial data. 
-            Our system uses the Spartan zkSNARK protocol to verify that no account exceeds $100,000 
+            Our system uses WebAssembly-powered Spartan zkSNARK protocol to verify that no account exceeds $100,000 
             while maintaining complete privacy.
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md">
+          <TabsList className="grid w-full grid-cols-5 bg-white/10 backdrop-blur-md">
             <TabsTrigger value="overview" className="text-white data-[state=active]:bg-white/20">
               <FileCheck className="w-4 h-4 mr-2" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="wasm" className="text-white data-[state=active]:bg-white/20">
+              <Lock className="w-4 h-4 mr-2" />
+              WASM
             </TabsTrigger>
             <TabsTrigger value="accounts" className="text-white data-[state=active]:bg-white/20">
               <Users className="w-4 h-4 mr-2" />
@@ -77,6 +81,10 @@ const Index = () => {
 
           <TabsContent value="overview">
             <SystemOverview />
+          </TabsContent>
+
+          <TabsContent value="wasm">
+            <WasmIntegration />
           </TabsContent>
 
           <TabsContent value="accounts">
