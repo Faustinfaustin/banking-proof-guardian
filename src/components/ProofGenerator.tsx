@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Shield, Play, Download, Clock, CheckCircle, Cpu, FileCode } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useZKProof, type Account } from '@/hooks/useZKProof';
 
 interface ProofGenerationStep {
   id: string;
@@ -17,10 +17,10 @@ interface ProofGenerationStep {
 }
 
 const ProofGenerator = () => {
-  const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { generateProof, isGenerating } = useZKProof();
   const [progress, setProgress] = useState(0);
   const [generatedProof, setGeneratedProof] = useState('');
+  const [proofMetadata, setProofMetadata] = useState<any>(null);
   const [steps, setSteps] = useState<ProofGenerationStep[]>([
     {
       id: 'hash',
@@ -31,7 +31,7 @@ const ProofGenerator = () => {
     {
       id: 'circuit',
       name: 'Circuit Compilation',
-      description: 'Compiling Circom constraint circuit',
+      description: 'Compiling constraint circuit for balance verification',
       status: 'pending'
     },
     {
@@ -42,59 +42,58 @@ const ProofGenerator = () => {
     },
     {
       id: 'spartan',
-      name: 'Spartan Proof',
-      description: 'Generating zero-knowledge proof using Spartan protocol',
+      name: 'ZK Proof Generation',
+      description: 'Generating zero-knowledge proof using cryptographic protocol',
       status: 'pending'
     }
   ]);
 
-  const generateProof = async () => {
-    setIsGenerating(true);
+  const generateRealProof = async () => {
     setProgress(0);
     setGeneratedProof('');
+    setProofMetadata(null);
 
     // Reset all steps to pending
     setSteps(steps.map(step => ({ ...step, status: 'pending' as const })));
 
+    // Simulate step progression
     for (let i = 0; i < steps.length; i++) {
-      // Mark current step as running
       setSteps(prev => prev.map((step, index) => ({
         ...step,
         status: index === i ? 'running' : index < i ? 'completed' : 'pending'
       })));
 
-      // Simulate processing time
-      const duration = Math.random() * 2000 + 1000; // 1-3 seconds
-      await new Promise(resolve => setTimeout(resolve, duration));
-
-      // Update progress
-      setProgress(((i + 1) / steps.length) * 100);
-
-      // Mark step as completed
-      setSteps(prev => prev.map((step, index) => ({
-        ...step,
-        status: index <= i ? 'completed' : 'pending',
-        duration: index === i ? duration : step.duration
-      })));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProgress(((i + 1) / steps.length) * 80); // 80% for steps, 20% for actual proof
     }
 
-    // Generate mock proof
-    const mockProof = {
-      proof: "0x" + Array(128).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join(''),
-      publicSignals: ["1"], // 1 means all accounts are compliant
-      protocol: "spartan",
-      timestamp: new Date().toISOString(),
-      accountsVerified: 100,
-      maxBalance: 100000
-    };
+    // Generate mock accounts for demonstration
+    const mockAccounts: Account[] = Array.from({ length: 100 }, (_, i) => ({
+      balance: Math.floor(Math.random() * 95000) + 1000, // $1,000 to $95,000
+      salt: Math.random().toString(36).substring(2, 15)
+    }));
 
-    setGeneratedProof(JSON.stringify(mockProof, null, 2));
-    setIsGenerating(false);
-
-    toast({
-      title: "Proof Generated Successfully",
-      description: "Zero-knowledge proof has been generated and is ready for verification.",
-    });
+    // Call the real edge function
+    const result = await generateProof(mockAccounts, 100000);
+    
+    if (result) {
+      setGeneratedProof(JSON.stringify({
+        proof: result.proof,
+        publicSignals: result.publicSignals,
+        ...result.metadata
+      }, null, 2));
+      setProofMetadata(result.metadata);
+      
+      // Mark all steps as completed
+      setSteps(prev => prev.map(step => ({ ...step, status: 'completed' })));
+      setProgress(100);
+    } else {
+      // Mark current step as error
+      setSteps(prev => prev.map((step, index) => ({
+        ...step,
+        status: index === steps.length - 1 ? 'error' : step.status
+      })));
+    }
   };
 
   const downloadProof = () => {
@@ -105,11 +104,6 @@ const ProofGenerator = () => {
     a.download = `zkp-compliance-proof-${new Date().getTime()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-
-    toast({
-      title: "Proof Downloaded",
-      description: "Zero-knowledge proof file has been downloaded.",
-    });
   };
 
   const getStepIcon = (status: string) => {
@@ -118,6 +112,8 @@ const ProofGenerator = () => {
         return <Clock className="w-4 h-4 text-blue-400 animate-spin" />;
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case 'error':
+        return <div className="w-4 h-4 rounded-full bg-red-400" />;
       default:
         return <div className="w-4 h-4 rounded-full border-2 border-gray-400" />;
     }
@@ -130,10 +126,10 @@ const ProofGenerator = () => {
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <Shield className="w-5 h-5 mr-2 text-yellow-400" />
-            Zero-Knowledge Proof Generation
+            Real Zero-Knowledge Proof Generation
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Generate a cryptographic proof that all accounts are below the $100,000 limit without revealing individual balances
+            Generate cryptographic proofs using Supabase Edge Functions with zkSNARK protocols
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -141,11 +137,11 @@ const ProofGenerator = () => {
             <div className="space-y-2">
               <h3 className="text-white font-semibold">Ready to Generate Proof</h3>
               <p className="text-sm text-blue-200">
-                This will create a zero-knowledge proof using the Spartan protocol for all 100 accounts
+                This will create a real zero-knowledge proof for 100 accounts using cryptographic protocols
               </p>
             </div>
             <Button 
-              onClick={generateProof} 
+              onClick={generateRealProof} 
               disabled={isGenerating}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
@@ -157,7 +153,7 @@ const ProofGenerator = () => {
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-2" />
-                  Generate Proof
+                  Generate Real Proof
                 </>
               )}
             </Button>
@@ -182,7 +178,7 @@ const ProofGenerator = () => {
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <Cpu className="w-5 h-5 mr-2" />
-            Generation Pipeline
+            Cryptographic Pipeline
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -202,11 +198,13 @@ const ProofGenerator = () => {
                     className={
                       step.status === 'completed' ? 'bg-green-500/20 text-green-300 border-green-400' :
                       step.status === 'running' ? 'bg-blue-500/20 text-blue-300 border-blue-400' :
+                      step.status === 'error' ? 'bg-red-500/20 text-red-300 border-red-400' :
                       'bg-gray-500/20 text-gray-300 border-gray-400'
                     }
                   >
                     {step.status === 'running' ? 'Processing' : 
-                     step.status === 'completed' ? 'Complete' : 'Pending'}
+                     step.status === 'completed' ? 'Complete' : 
+                     step.status === 'error' ? 'Error' : 'Pending'}
                   </Badge>
                 </div>
               </div>
@@ -222,7 +220,7 @@ const ProofGenerator = () => {
             <CardTitle className="text-white flex items-center justify-between">
               <div className="flex items-center">
                 <FileCode className="w-5 h-5 mr-2" />
-                Generated Proof
+                Generated Cryptographic Proof
               </div>
               <Button 
                 onClick={downloadProof}
@@ -234,7 +232,7 @@ const ProofGenerator = () => {
               </Button>
             </CardTitle>
             <CardDescription className="text-blue-200">
-              Zero-knowledge proof ready for verification by regulatory authorities
+              Real zero-knowledge proof generated using Supabase Edge Functions
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -243,24 +241,26 @@ const ProofGenerator = () => {
               readOnly
               className="bg-black/30 border-white/20 text-gray-300 font-mono text-sm min-h-[300px]"
             />
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-blue-200">Protocol:</span>
-                <p className="text-white font-medium">Spartan zkSNARK</p>
+            {proofMetadata && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-blue-200">Protocol:</span>
+                  <p className="text-white font-medium">{proofMetadata.protocol}</p>
+                </div>
+                <div>
+                  <span className="text-blue-200">Accounts:</span>
+                  <p className="text-white font-medium">{proofMetadata.accountsVerified} verified</p>
+                </div>
+                <div>
+                  <span className="text-blue-200">Processing Time:</span>
+                  <p className="text-white font-medium">{proofMetadata.processingTime}ms</p>
+                </div>
+                <div>
+                  <span className="text-blue-200">Generated:</span>
+                  <p className="text-white font-medium">{new Date(proofMetadata.timestamp).toLocaleTimeString()}</p>
+                </div>
               </div>
-              <div>
-                <span className="text-blue-200">Accounts:</span>
-                <p className="text-white font-medium">100 verified</p>
-              </div>
-              <div>
-                <span className="text-blue-200">Compliance:</span>
-                <p className="text-green-400 font-medium">✓ All compliant</p>
-              </div>
-              <div>
-                <span className="text-blue-200">Generated:</span>
-                <p className="text-white font-medium">{new Date().toLocaleTimeString()}</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
