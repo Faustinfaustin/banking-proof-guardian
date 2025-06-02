@@ -9,6 +9,7 @@ import AccountManager from '@/components/AccountManager';
 import ProofGenerator from '@/components/ProofGenerator';
 import ComplianceVerifier from '@/components/ComplianceVerifier';
 import SystemOverview from '@/components/SystemOverview';
+import WasmIntegration from '@/components/WasmIntegration';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('overview');
