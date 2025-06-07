@@ -30,39 +30,50 @@ This directory contains the Rust microservice that implements Microsoft's Sparta
 3. Enter your Railway service URL in the "Service URL" field (without /health)
 4. Click "Test Connection" - it should show "Connected" status
 
-## Troubleshooting Common Issues
+## IMPORTANT: Updated Fix for 500 Errors
 
-### Issue: "Unexpected end of JSON input" or 500 errors
+**If you're getting "Unexpected end of JSON input" or 500 errors:**
 
-**Solution Steps:**
-1. **Check Railway Logs**: Go to Railway dashboard → your service → "Deployments" → click latest deployment → view logs
-2. **Verify Build Success**: Ensure the build completed without errors
-3. **Test Endpoints Directly**:
-   - Visit `https://your-service.up.railway.app/health` in browser
-   - Should return: `{"status":"healthy","service":"spartan-zkp","version":"0.1.0","timestamp":"..."}`
-4. **Redeploy**: If logs show issues, redeploy with the updated code
+1. **Update Your Code**: Replace your entire `src/main.rs` file with the latest version from this repository
+2. **Redeploy**: Push changes to GitHub and redeploy on Railway
+3. **Wait for Build**: Ensure the build completes successfully (2-3 minutes)
+4. **Test Endpoints**:
+   - Visit `https://your-service.up.railway.app/` - should return health status
+   - Visit `https://your-service.up.railway.app/health` - should return detailed health info
+5. **Both should return proper JSON without errors**
 
-### Issue: Connection Failed
+## Expected Responses
 
-**Common Causes & Solutions:**
-1. **Service Not Running**: Check Railway dashboard to ensure service is "Active"
-2. **Wrong URL**: Ensure you're using the base URL (without `/health` suffix)
-3. **Build Failure**: Check deployment logs for Rust compilation errors
-4. **Port Issues**: Service should be binding to `0.0.0.0:8080`
+### Root endpoint (`/`)
+```json
+{
+  "status": "healthy",
+  "service": "spartan-zkp",
+  "version": "0.1.0",
+  "timestamp": "2024-12-07T14:30:00Z"
+}
+```
 
-### Issue: Build Failures
-
-**Solutions:**
-1. **Update Rust Version**: Ensure Railway is using Rust 1.75+
-2. **Dependencies**: All required crates should auto-install
-3. **Docker Issues**: Make sure Dockerfile is in repository root
+### Health endpoint (`/health`)
+```json
+{
+  "status": "healthy",
+  "service": "spartan-zkp",
+  "version": "0.1.0",
+  "timestamp": "2024-12-07T14:30:00Z"
+}
+```
 
 ## Manual Testing
+
+### Test Root Endpoint
+```bash
+curl https://your-service.up.railway.app/
+```
 
 ### Test Health Endpoint
 ```bash
 curl https://your-service.up.railway.app/health
-# Expected: {"status":"healthy","service":"spartan-zkp","version":"0.1.0","timestamp":"..."}
 ```
 
 ### Test Proof Generation
@@ -79,6 +90,47 @@ curl -X POST https://your-service.up.railway.app/zkp \
   -d '{"operation": "verify", "proof_data": "{\"test\":\"proof\"}", "public_inputs": ["1"]}'
 ```
 
+## Troubleshooting Railway Deployment
+
+### Check Railway Logs
+1. Go to Railway dashboard
+2. Click on your service
+3. Click "Deployments" tab
+4. Click on the latest deployment
+5. View the build and runtime logs
+
+### Common Issues and Solutions
+
+**Issue: Build fails with Rust errors**
+- Ensure you're using the latest `Cargo.toml` and `src/main.rs` files
+- Check that all dependencies are correctly specified
+
+**Issue: Service starts but returns 500 errors**
+- Update to the latest `src/main.rs` code (fixes JSON parsing issues)
+- Redeploy and wait for completion
+
+**Issue: CORS errors in browser**
+- The updated code includes proper CORS headers
+- Make sure you're using the latest version
+
+**Issue: Connection timeout**
+- Check that Railway assigned a domain to your service
+- Verify the service is running (not crashed) in Railway dashboard
+
+## Environment Variables
+
+The service uses these environment variables (automatically set by Railway):
+- `PORT`: Port to bind to (Railway sets this automatically)
+- `HOST`: Host to bind to (default: 0.0.0.0)
+- `RUST_LOG`: Log level (default: info)
+
+## API Endpoints
+
+- `GET /` - Root endpoint (returns health status)
+- `GET /health` - Detailed health check
+- `POST /zkp` - ZKP operations (prove/verify)
+- `OPTIONS /zkp` - CORS preflight
+
 ## Alternative: Deploy to Render
 
 ### Quick Steps:
@@ -90,53 +142,10 @@ curl -X POST https://your-service.up.railway.app/zkp \
    - **Start Command**: `./target/release/spartan-service`
    - **Environment**: Add `RUST_LOG=info` and `HOST=0.0.0.0`
 
-## API Endpoints
-
-- `GET /` - Root endpoint (health check)
-- `GET /health` - Detailed health check
-- `POST /zkp` - ZKP operations (prove/verify)
-- `OPTIONS /zkp` - CORS preflight
-
-## Local Testing
-
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Run locally
-cd rust-spartan-service
-cargo run
-
-# Test health endpoint
-curl http://localhost:8080/health
-
-# Test proof generation
-curl -X POST http://localhost:8080/zkp \
-  -H "Content-Type: application/json" \
-  -d '{"operation": "prove", "witness_data": [50000, 75000], "max_balance": 100000}'
-```
-
-## Environment Variables
-
-The service uses these environment variables:
-- `PORT`: Port to bind to (default: 8080)
-- `HOST`: Host to bind to (default: 0.0.0.0)
-- `RUST_LOG`: Log level (default: info)
-
-## Quick Fix for Current Issue
-
-If you're seeing "Unexpected end of JSON input":
-
-1. **Update your Railway deployment** with the latest code from this repository
-2. **Redeploy** the service
-3. **Wait 2-3 minutes** for deployment to complete
-4. **Test** the health endpoint: `https://your-service.up.railway.app/health`
-5. **Try connection test** again in BankGuard ZKP app
-
 ## Next Steps
 
 After successful deployment:
-1. The service will respond to all endpoints with proper JSON
+1. Both `/` and `/health` endpoints should return proper JSON
 2. Configure the service URL in your BankGuard ZKP app (base URL only)
 3. Test proof generation and verification
 4. Optionally add API key authentication for production use

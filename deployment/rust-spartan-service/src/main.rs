@@ -40,89 +40,95 @@ struct ErrorResponse {
 async fn health(_req: HttpRequest) -> Result<HttpResponse> {
     info!("Health check requested");
     
-    Ok(HttpResponse::Ok().json(HealthResponse {
-        status: "healthy".to_string(),
-        service: "spartan-zkp".to_string(),
-        version: "0.1.0".to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    }))
+    Ok(HttpResponse::Ok()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(HealthResponse {
+            status: "healthy".to_string(),
+            service: "spartan-zkp".to_string(),
+            version: "0.1.0".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }))
 }
 
-async fn zkp_operations(req_body: Result<web::Json<ZkpRequest>, actix_web::Error>) -> Result<HttpResponse> {
+async fn zkp_operations(req_body: web::Json<ZkpRequest>) -> Result<HttpResponse> {
     let start_time = std::time::Instant::now();
     
-    // Handle potential JSON parsing errors gracefully
-    let req = match req_body {
-        Ok(json_req) => json_req,
-        Err(e) => {
-            info!("Failed to parse JSON request: {}", e);
-            return Ok(HttpResponse::BadRequest().json(ErrorResponse {
-                success: false,
-                error: format!("Invalid JSON: {}", e),
-            }));
-        }
-    };
+    info!("Processing ZKP operation: {}", req_body.operation);
     
-    info!("Processing ZKP operation: {}", req.operation);
-    
-    match req.operation.as_str() {
+    match req_body.operation.as_str() {
         "prove" => {
-            if let (Some(witness_data), Some(max_balance)) = (&req.witness_data, &req.max_balance) {
+            if let (Some(witness_data), Some(max_balance)) = (&req_body.witness_data, &req_body.max_balance) {
                 let proof = generate_spartan_proof(witness_data, *max_balance).await;
                 let processing_time = start_time.elapsed().as_millis() as u64;
                 
-                Ok(HttpResponse::Ok().json(ZkpResponse {
-                    success: true,
-                    proof: Some(proof),
-                    public_signals: Some(vec!["1".to_string()]),
-                    verification_result: None,
-                    error: None,
-                    processing_time_ms: Some(processing_time),
-                }))
+                Ok(HttpResponse::Ok()
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Content-Type", "application/json"))
+                    .json(ZkpResponse {
+                        success: true,
+                        proof: Some(proof),
+                        public_signals: Some(vec!["1".to_string()]),
+                        verification_result: None,
+                        error: None,
+                        processing_time_ms: Some(processing_time),
+                    }))
             } else {
-                Ok(HttpResponse::BadRequest().json(ZkpResponse {
-                    success: false,
-                    proof: None,
-                    public_signals: None,
-                    verification_result: None,
-                    error: Some("Missing witness_data or max_balance".to_string()),
-                    processing_time_ms: None,
-                }))
+                Ok(HttpResponse::BadRequest()
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Content-Type", "application/json"))
+                    .json(ZkpResponse {
+                        success: false,
+                        proof: None,
+                        public_signals: None,
+                        verification_result: None,
+                        error: Some("Missing witness_data or max_balance".to_string()),
+                        processing_time_ms: None,
+                    }))
             }
         },
         "verify" => {
-            if let (Some(proof_data), Some(public_inputs)) = (&req.proof_data, &req.public_inputs) {
+            if let (Some(proof_data), Some(public_inputs)) = (&req_body.proof_data, &req_body.public_inputs) {
                 let is_valid = verify_spartan_proof(proof_data, public_inputs).await;
                 let processing_time = start_time.elapsed().as_millis() as u64;
                 
-                Ok(HttpResponse::Ok().json(ZkpResponse {
-                    success: true,
-                    proof: None,
-                    public_signals: None,
-                    verification_result: Some(is_valid),
-                    error: None,
-                    processing_time_ms: Some(processing_time),
-                }))
+                Ok(HttpResponse::Ok()
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Content-Type", "application/json"))
+                    .json(ZkpResponse {
+                        success: true,
+                        proof: None,
+                        public_signals: None,
+                        verification_result: Some(is_valid),
+                        error: None,
+                        processing_time_ms: Some(processing_time),
+                    }))
             } else {
-                Ok(HttpResponse::BadRequest().json(ZkpResponse {
+                Ok(HttpResponse::BadRequest()
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Content-Type", "application/json"))
+                    .json(ZkpResponse {
+                        success: false,
+                        proof: None,
+                        public_signals: None,
+                        verification_result: None,
+                        error: Some("Missing proof_data or public_inputs".to_string()),
+                        processing_time_ms: None,
+                    }))
+            }
+        },
+        _ => {
+            Ok(HttpResponse::BadRequest()
+                .insert_header(("Access-Control-Allow-Origin", "*"))
+                .insert_header(("Content-Type", "application/json"))
+                .json(ZkpResponse {
                     success: false,
                     proof: None,
                     public_signals: None,
                     verification_result: None,
-                    error: Some("Missing proof_data or public_inputs".to_string()),
+                    error: Some(format!("Unknown operation: {}", req_body.operation)),
                     processing_time_ms: None,
                 }))
-            }
-        },
-        _ => {
-            Ok(HttpResponse::BadRequest().json(ZkpResponse {
-                success: false,
-                proof: None,
-                public_signals: None,
-                verification_result: None,
-                error: Some(format!("Unknown operation: {}", req.operation)),
-                processing_time_ms: None,
-            }))
         }
     }
 }
@@ -160,25 +166,33 @@ async fn preflight() -> Result<HttpResponse> {
         .insert_header(("Access-Control-Allow-Origin", "*"))
         .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
         .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
-        .finish())
+        .insert_header(("Content-Type", "application/json"))
+        .json(serde_json::json!({"message": "CORS preflight successful"})))
 }
 
-// Catch-all handler for the root path
+// Root handler that returns health status
 async fn root_handler() -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok().json(HealthResponse {
-        status: "healthy".to_string(),
-        service: "spartan-zkp".to_string(),
-        version: "0.1.0".to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    }))
+    info!("Root endpoint accessed");
+    Ok(HttpResponse::Ok()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(HealthResponse {
+            status: "healthy".to_string(),
+            service: "spartan-zkp".to_string(),
+            version: "0.1.0".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }))
 }
 
 // 404 handler
 async fn not_found() -> Result<HttpResponse> {
-    Ok(HttpResponse::NotFound().json(ErrorResponse {
-        success: false,
-        error: "Endpoint not found. Available endpoints: GET /health, POST /zkp".to_string(),
-    }))
+    Ok(HttpResponse::NotFound()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(ErrorResponse {
+            success: false,
+            error: "Endpoint not found. Available endpoints: GET /, GET /health, POST /zkp".to_string(),
+        }))
 }
 
 #[actix_web::main]
@@ -198,6 +212,7 @@ async fn main() -> std::io::Result<()> {
                     .add(("Access-Control-Allow-Origin", "*"))
                     .add(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
                     .add(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
+                    .add(("Content-Type", "application/json"))
             )
             .route("/", web::get().to(root_handler))
             .route("/health", web::get().to(health))
