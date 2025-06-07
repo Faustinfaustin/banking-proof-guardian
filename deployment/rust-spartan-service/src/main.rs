@@ -1,5 +1,5 @@
 
-use actix_web::{web, App, HttpServer, Result, HttpResponse, middleware::Logger};
+use actix_web::{web, App, HttpServer, Result, HttpResponse, middleware::Logger, HttpRequest};
 use serde::{Deserialize, Serialize};
 use std::env;
 use log::info;
@@ -28,18 +28,40 @@ struct HealthResponse {
     status: String,
     service: String,
     version: String,
+    timestamp: String,
 }
 
-async fn health() -> Result<HttpResponse> {
+#[derive(Serialize)]
+struct ErrorResponse {
+    success: bool,
+    error: String,
+}
+
+async fn health(_req: HttpRequest) -> Result<HttpResponse> {
+    info!("Health check requested");
+    
     Ok(HttpResponse::Ok().json(HealthResponse {
         status: "healthy".to_string(),
         service: "spartan-zkp".to_string(),
         version: "0.1.0".to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
     }))
 }
 
-async fn zkp_operations(req: web::Json<ZkpRequest>) -> Result<HttpResponse> {
+async fn zkp_operations(req_body: Result<web::Json<ZkpRequest>, actix_web::Error>) -> Result<HttpResponse> {
     let start_time = std::time::Instant::now();
+    
+    // Handle potential JSON parsing errors gracefully
+    let req = match req_body {
+        Ok(json_req) => json_req,
+        Err(e) => {
+            info!("Failed to parse JSON request: {}", e);
+            return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+                success: false,
+                error: format!("Invalid JSON: {}", e),
+            }));
+        }
+    };
     
     info!("Processing ZKP operation: {}", req.operation);
     
@@ -118,7 +140,8 @@ async fn generate_spartan_proof(witness_data: &[i32], max_balance: i32) -> Strin
         "pi_c": format!("0x{}", "c".repeat(64)),
         "protocol": "spartan-v1",
         "accounts_verified": witness_data.len(),
-        "max_balance": max_balance
+        "max_balance": max_balance,
+        "timestamp": chrono::Utc::now().to_rfc3339()
     }).to_string()
 }
 
@@ -140,6 +163,24 @@ async fn preflight() -> Result<HttpResponse> {
         .finish())
 }
 
+// Catch-all handler for the root path
+async fn root_handler() -> Result<HttpResponse> {
+    Ok(HttpResponse::Ok().json(HealthResponse {
+        status: "healthy".to_string(),
+        service: "spartan-zkp".to_string(),
+        version: "0.1.0".to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    }))
+}
+
+// 404 handler
+async fn not_found() -> Result<HttpResponse> {
+    Ok(HttpResponse::NotFound().json(ErrorResponse {
+        success: false,
+        error: "Endpoint not found. Available endpoints: GET /health, POST /zkp".to_string(),
+    }))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
@@ -158,9 +199,11 @@ async fn main() -> std::io::Result<()> {
                     .add(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
                     .add(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
             )
+            .route("/", web::get().to(root_handler))
             .route("/health", web::get().to(health))
             .route("/zkp", web::post().to(zkp_operations))
             .route("/zkp", web::options().to(preflight))
+            .default_service(web::route().to(not_found))
     })
     .bind(format!("{}:{}", host, port))?
     .run()

@@ -27,8 +27,57 @@ This directory contains the Rust microservice that implements Microsoft's Sparta
 ### Step 4: Configure in BankGuard ZKP
 1. Open your BankGuard ZKP application
 2. Go to the "WASM" tab
-3. Enter your Railway service URL in the "Service URL" field
+3. Enter your Railway service URL in the "Service URL" field (without /health)
 4. Click "Test Connection" - it should show "Connected" status
+
+## Troubleshooting Common Issues
+
+### Issue: "Unexpected end of JSON input" or 500 errors
+
+**Solution Steps:**
+1. **Check Railway Logs**: Go to Railway dashboard → your service → "Deployments" → click latest deployment → view logs
+2. **Verify Build Success**: Ensure the build completed without errors
+3. **Test Endpoints Directly**:
+   - Visit `https://your-service.up.railway.app/health` in browser
+   - Should return: `{"status":"healthy","service":"spartan-zkp","version":"0.1.0","timestamp":"..."}`
+4. **Redeploy**: If logs show issues, redeploy with the updated code
+
+### Issue: Connection Failed
+
+**Common Causes & Solutions:**
+1. **Service Not Running**: Check Railway dashboard to ensure service is "Active"
+2. **Wrong URL**: Ensure you're using the base URL (without `/health` suffix)
+3. **Build Failure**: Check deployment logs for Rust compilation errors
+4. **Port Issues**: Service should be binding to `0.0.0.0:8080`
+
+### Issue: Build Failures
+
+**Solutions:**
+1. **Update Rust Version**: Ensure Railway is using Rust 1.75+
+2. **Dependencies**: All required crates should auto-install
+3. **Docker Issues**: Make sure Dockerfile is in repository root
+
+## Manual Testing
+
+### Test Health Endpoint
+```bash
+curl https://your-service.up.railway.app/health
+# Expected: {"status":"healthy","service":"spartan-zkp","version":"0.1.0","timestamp":"..."}
+```
+
+### Test Proof Generation
+```bash
+curl -X POST https://your-service.up.railway.app/zkp \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "prove", "witness_data": [50000, 75000], "max_balance": 100000}'
+```
+
+### Test Proof Verification
+```bash
+curl -X POST https://your-service.up.railway.app/zkp \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "verify", "proof_data": "{\"test\":\"proof\"}", "public_inputs": ["1"]}'
+```
 
 ## Alternative: Deploy to Render
 
@@ -41,34 +90,10 @@ This directory contains the Rust microservice that implements Microsoft's Sparta
    - **Start Command**: `./target/release/spartan-service`
    - **Environment**: Add `RUST_LOG=info` and `HOST=0.0.0.0`
 
-## Troubleshooting
-
-### Common Issues:
-
-1. **500 Error on /health**:
-   - Check Railway/Render logs for build errors
-   - Ensure all dependencies are properly installed
-   - Verify the service is listening on the correct port
-
-2. **Connection Refused**:
-   - Make sure the service URL is correct
-   - Check if the service is actually running
-   - Verify CORS headers are properly set
-
-3. **Build Failures**:
-   - Ensure Rust 1.75+ compatibility
-   - Check for missing system dependencies
-   - Review the Dockerfile for proper setup
-
-### Debugging Steps:
-1. Check deployment logs in Railway/Render dashboard
-2. Test the `/health` endpoint directly in browser
-3. Verify environment variables are set correctly
-4. Check that the service is binding to `0.0.0.0:8080`
-
 ## API Endpoints
 
-- `GET /health` - Health check (returns JSON status)
+- `GET /` - Root endpoint (health check)
+- `GET /health` - Detailed health check
 - `POST /zkp` - ZKP operations (prove/verify)
 - `OPTIONS /zkp` - CORS preflight
 
@@ -91,11 +116,28 @@ curl -X POST http://localhost:8080/zkp \
   -d '{"operation": "prove", "witness_data": [50000, 75000], "max_balance": 100000}'
 ```
 
+## Environment Variables
+
+The service uses these environment variables:
+- `PORT`: Port to bind to (default: 8080)
+- `HOST`: Host to bind to (default: 0.0.0.0)
+- `RUST_LOG`: Log level (default: info)
+
+## Quick Fix for Current Issue
+
+If you're seeing "Unexpected end of JSON input":
+
+1. **Update your Railway deployment** with the latest code from this repository
+2. **Redeploy** the service
+3. **Wait 2-3 minutes** for deployment to complete
+4. **Test** the health endpoint: `https://your-service.up.railway.app/health`
+5. **Try connection test** again in BankGuard ZKP app
+
 ## Next Steps
 
 After successful deployment:
-1. The service will respond to `/health` with a JSON status
-2. Configure the service URL in your BankGuard ZKP app
+1. The service will respond to all endpoints with proper JSON
+2. Configure the service URL in your BankGuard ZKP app (base URL only)
 3. Test proof generation and verification
 4. Optionally add API key authentication for production use
 
