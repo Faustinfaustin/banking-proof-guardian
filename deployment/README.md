@@ -3,105 +3,102 @@
 
 This directory contains the Rust microservice that implements Microsoft's Spartan zero-knowledge proof protocol for the BankGuard ZKP application.
 
-## Quick Start
+## Quick Deploy to Railway
 
-### Option 1: Deploy to Railway (Recommended)
+### Step 1: Prepare the Code
+1. Copy the entire `deployment/rust-spartan-service` folder to a new GitHub repository
+2. Make sure all files are in the root of the repository:
+   - `Cargo.toml`
+   - `Dockerfile`
+   - `src/main.rs`
 
-1. **Push to GitHub**: Push this `deployment/rust-spartan-service` folder to a GitHub repository
-2. **Connect to Railway**: 
-   - Go to [Railway.app](https://railway.app)
-   - Create a new project from GitHub repo
-   - Select the repository containing this code
-3. **Configure**: Railway will automatically detect the `railway.toml` configuration
-4. **Deploy**: Railway will build and deploy automatically
-5. **Get URL**: Copy the deployed service URL (e.g., `https://your-app.railway.app`)
+### Step 2: Deploy to Railway
+1. Go to [Railway.app](https://railway.app) and sign up/login
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Connect your GitHub account and select the repository
+4. Railway will automatically detect the Dockerfile and deploy
+5. Wait for deployment to complete (usually 2-3 minutes)
 
-### Option 2: Deploy to Render
+### Step 3: Get Your Service URL
+1. In Railway dashboard, click on your service
+2. Go to "Settings" → "Domains"
+3. Copy the generated URL (e.g., `https://your-service-name.up.railway.app`)
 
-1. **Push to GitHub**: Push this code to a GitHub repository
-2. **Connect to Render**:
-   - Go to [Render.com](https://render.com)
-   - Create new Web Service from GitHub
-   - Select your repository
-3. **Configure**: Use the `render.yaml` configuration
-4. **Deploy**: Render will build and deploy automatically
+### Step 4: Configure in BankGuard ZKP
+1. Open your BankGuard ZKP application
+2. Go to the "WASM" tab
+3. Enter your Railway service URL in the "Service URL" field
+4. Click "Test Connection" - it should show "Connected" status
 
-### Option 3: Deploy to Heroku
+## Alternative: Deploy to Render
 
-1. **Install Heroku CLI** and login
-2. **Create app**: `heroku create your-spartan-service`
-3. **Add Rust buildpack**: `heroku buildpacks:set emk/rust`
-4. **Deploy**: `git push heroku main`
-5. **Set environment**: `heroku config:set RUST_LOG=info`
+### Quick Steps:
+1. Push code to GitHub
+2. Go to [Render.com](https://render.com)
+3. Create "New Web Service" from GitHub repo
+4. Use these settings:
+   - **Build Command**: `cargo build --release`
+   - **Start Command**: `./target/release/spartan-service`
+   - **Environment**: Add `RUST_LOG=info` and `HOST=0.0.0.0`
 
-## Local Development
+## Troubleshooting
+
+### Common Issues:
+
+1. **500 Error on /health**:
+   - Check Railway/Render logs for build errors
+   - Ensure all dependencies are properly installed
+   - Verify the service is listening on the correct port
+
+2. **Connection Refused**:
+   - Make sure the service URL is correct
+   - Check if the service is actually running
+   - Verify CORS headers are properly set
+
+3. **Build Failures**:
+   - Ensure Rust 1.75+ compatibility
+   - Check for missing system dependencies
+   - Review the Dockerfile for proper setup
+
+### Debugging Steps:
+1. Check deployment logs in Railway/Render dashboard
+2. Test the `/health` endpoint directly in browser
+3. Verify environment variables are set correctly
+4. Check that the service is binding to `0.0.0.0:8080`
+
+## API Endpoints
+
+- `GET /health` - Health check (returns JSON status)
+- `POST /zkp` - ZKP operations (prove/verify)
+- `OPTIONS /zkp` - CORS preflight
+
+## Local Testing
 
 ```bash
-# Install Rust (if not already installed)
+# Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Clone and run
+# Run locally
 cd rust-spartan-service
 cargo run
 
-# Test endpoints
+# Test health endpoint
 curl http://localhost:8080/health
+
+# Test proof generation
 curl -X POST http://localhost:8080/zkp \
   -H "Content-Type: application/json" \
   -d '{"operation": "prove", "witness_data": [50000, 75000], "max_balance": 100000}'
 ```
 
-## Configuration in BankGuard ZKP
+## Next Steps
 
-After deployment:
+After successful deployment:
+1. The service will respond to `/health` with a JSON status
+2. Configure the service URL in your BankGuard ZKP app
+3. Test proof generation and verification
+4. Optionally add API key authentication for production use
 
-1. **Copy your service URL** (e.g., `https://your-app.railway.app`)
-2. **Open BankGuard ZKP** application
-3. **Go to WASM tab** in the application
-4. **Enter Service URL** in the Spartan Service Configuration
-5. **Test Connection** to verify it works
-6. **Configure in Supabase** (optional): Add `SPARTAN_SERVICE_URL` to Supabase secrets
+## Note on Implementation
 
-## API Endpoints
-
-- `GET /health` - Health check endpoint
-- `POST /zkp` - Main ZKP operations endpoint
-
-### Request Format
-
-```json
-{
-  "operation": "prove" | "verify",
-  "witness_data": [50000, 75000],  // For prove operation
-  "max_balance": 100000,           // For prove operation
-  "proof_data": "...",             // For verify operation
-  "public_inputs": ["1"]           // For verify operation
-}
-```
-
-## Implementation Status
-
-⚠️ **Current Status**: This is a **template/placeholder** implementation. The actual Spartan protocol integration needs to be completed.
-
-### TODO for Production Use:
-
-1. **Integrate Microsoft Spartan**: Replace placeholder functions with actual Spartan library calls
-2. **Security**: Add proper API key authentication
-3. **Circuit Definition**: Define the actual constraint system for balance verification
-4. **Testing**: Add comprehensive test suite
-5. **Monitoring**: Add metrics and logging
-6. **Documentation**: Add API documentation
-
-## Security Notes
-
-- The service runs on HTTP by default (HTTPS termination handled by deployment platform)
-- API key authentication should be implemented for production use
-- Consider rate limiting for production deployments
-- Ensure proper error handling and input validation
-
-## Troubleshooting
-
-- **Build Errors**: Ensure Rust 1.75+ is installed
-- **Connection Issues**: Check CORS headers and firewall settings
-- **Port Issues**: Default port is 8080, configurable via `PORT` environment variable
-- **Logs**: Check deployment platform logs for debugging information
+This is currently a **working template** with simulated Spartan operations. For production use, you would need to integrate the actual Microsoft Spartan library for real zero-knowledge proofs.

@@ -12,9 +12,6 @@ serde_json = "1.0"
 env_logger = "0.10"
 log = "0.4"
 uuid = { version = "1.0", features = ["v4"] }
-spartan = { git = "https://github.com/Microsoft/Spartan" }
-curve25519-dalek = "4.0"
-merlin = "3.0"
 
 [profile.release]
 opt-level = 3

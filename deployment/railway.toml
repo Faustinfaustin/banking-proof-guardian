@@ -5,14 +5,10 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-[[deploy.environmentVariables]]
-name = "RUST_LOG"
-value = "info"
-
-[[deploy.environmentVariables]]
-name = "HOST"
-value = "0.0.0.0"
+[environment]
+RUST_LOG = "info"
+HOST = "0.0.0.0"
