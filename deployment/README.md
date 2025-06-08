@@ -3,6 +3,14 @@
 
 This directory contains the Rust microservice that implements Microsoft's Spartan zero-knowledge proof protocol for the BankGuard ZKP application.
 
+## FIXED: 500 "Unexpected end of JSON input" Error ✅
+
+**The issue was resolved** - the service was trying to parse JSON from GET requests that don't have request bodies. The latest `src/main.rs` properly handles:
+- GET requests without JSON parsing
+- Separate handlers for different endpoints
+- Proper CORS headers
+- Clear error responses
+
 ## Quick Deploy to Railway
 
 ### Step 1: Prepare the Code
@@ -24,45 +32,29 @@ This directory contains the Rust microservice that implements Microsoft's Sparta
 2. Go to "Settings" → "Domains"
 3. Copy the generated URL (e.g., `https://your-service-name.up.railway.app`)
 
-### Step 4: Configure in BankGuard ZKP
+### Step 4: Test Your Deployment
+**Both endpoints should now work without errors:**
+
+1. **Root endpoint**: Visit `https://your-service.up.railway.app/`
+2. **Health endpoint**: Visit `https://your-service.up.railway.app/health`
+
+Both should return proper JSON like:
+```json
+{
+  "status": "healthy",
+  "service": "spartan-zkp",
+  "version": "0.1.0",
+  "timestamp": "2024-12-07T14:30:00Z",
+  "uptime": "online",
+  "endpoints": ["GET /", "GET /health", "POST /zkp", "OPTIONS /zkp"]
+}
+```
+
+### Step 5: Configure in BankGuard ZKP
 1. Open your BankGuard ZKP application
 2. Go to the "WASM" tab
-3. Enter your Railway service URL in the "Service URL" field (without /health)
+3. Enter your Railway service URL in the "Service URL" field (base URL only, no /health)
 4. Click "Test Connection" - it should show "Connected" status
-
-## IMPORTANT: Updated Fix for 500 Errors
-
-**If you're getting "Unexpected end of JSON input" or 500 errors:**
-
-1. **Update Your Code**: Replace your entire `src/main.rs` file with the latest version from this repository
-2. **Redeploy**: Push changes to GitHub and redeploy on Railway
-3. **Wait for Build**: Ensure the build completes successfully (2-3 minutes)
-4. **Test Endpoints**:
-   - Visit `https://your-service.up.railway.app/` - should return health status
-   - Visit `https://your-service.up.railway.app/health` - should return detailed health info
-5. **Both should return proper JSON without errors**
-
-## Expected Responses
-
-### Root endpoint (`/`)
-```json
-{
-  "status": "healthy",
-  "service": "spartan-zkp",
-  "version": "0.1.0",
-  "timestamp": "2024-12-07T14:30:00Z"
-}
-```
-
-### Health endpoint (`/health`)
-```json
-{
-  "status": "healthy",
-  "service": "spartan-zkp",
-  "version": "0.1.0",
-  "timestamp": "2024-12-07T14:30:00Z"
-}
-```
 
 ## Manual Testing
 
@@ -90,62 +82,61 @@ curl -X POST https://your-service.up.railway.app/zkp \
   -d '{"operation": "verify", "proof_data": "{\"test\":\"proof\"}", "public_inputs": ["1"]}'
 ```
 
-## Troubleshooting Railway Deployment
+## What Was Fixed
 
-### Check Railway Logs
-1. Go to Railway dashboard
-2. Click on your service
-3. Click "Deployments" tab
-4. Click on the latest deployment
-5. View the build and runtime logs
+The previous code had a fundamental flaw:
+- **Problem**: All request handlers were trying to parse JSON, even GET requests
+- **Solution**: Separated GET and POST handlers completely
+- **Result**: GET requests (/, /health) work without JSON parsing errors
 
-### Common Issues and Solutions
+### Key Changes Made:
+1. **Separate handlers** for different HTTP methods
+2. **No JSON parsing** on GET requests
+3. **Proper CORS** headers on all responses
+4. **Clear error messages** and logging
+5. **Structured responses** with consistent format
 
-**Issue: Build fails with Rust errors**
-- Ensure you're using the latest `Cargo.toml` and `src/main.rs` files
-- Check that all dependencies are correctly specified
+## Troubleshooting
 
-**Issue: Service starts but returns 500 errors**
-- Update to the latest `src/main.rs` code (fixes JSON parsing issues)
-- Redeploy and wait for completion
+If you're still having issues:
 
-**Issue: CORS errors in browser**
-- The updated code includes proper CORS headers
-- Make sure you're using the latest version
+1. **Check Railway Logs**:
+   - Go to Railway dashboard → Your service → Deployments
+   - Click on latest deployment → View logs
+   - Look for any Rust compilation or runtime errors
 
-**Issue: Connection timeout**
-- Check that Railway assigned a domain to your service
-- Verify the service is running (not crashed) in Railway dashboard
+2. **Verify Endpoints Directly**:
+   ```bash
+   # Should return 200 OK with JSON
+   curl -v https://your-service.up.railway.app/health
+   
+   # Should return 200 OK with JSON  
+   curl -v https://your-service.up.railway.app/
+   ```
+
+3. **Check Service Status**:
+   - In Railway dashboard, verify service is "Running" (green)
+   - Check that port 8080 is being used
+   - Verify domain is properly assigned
 
 ## Environment Variables
 
 The service uses these environment variables (automatically set by Railway):
-- `PORT`: Port to bind to (Railway sets this automatically)
+- `PORT`: Port to bind to (Railway sets this automatically to 8080)
 - `HOST`: Host to bind to (default: 0.0.0.0)
 - `RUST_LOG`: Log level (default: info)
 
 ## API Endpoints
 
 - `GET /` - Root endpoint (returns health status)
-- `GET /health` - Detailed health check
+- `GET /health` - Detailed health check  
 - `POST /zkp` - ZKP operations (prove/verify)
 - `OPTIONS /zkp` - CORS preflight
-
-## Alternative: Deploy to Render
-
-### Quick Steps:
-1. Push code to GitHub
-2. Go to [Render.com](https://render.com)
-3. Create "New Web Service" from GitHub repo
-4. Use these settings:
-   - **Build Command**: `cargo build --release`
-   - **Start Command**: `./target/release/spartan-service`
-   - **Environment**: Add `RUST_LOG=info` and `HOST=0.0.0.0`
 
 ## Next Steps
 
 After successful deployment:
-1. Both `/` and `/health` endpoints should return proper JSON
+1. **Both `/` and `/health` endpoints should return proper JSON without 500 errors**
 2. Configure the service URL in your BankGuard ZKP app (base URL only)
 3. Test proof generation and verification
 4. Optionally add API key authentication for production use

@@ -29,62 +29,98 @@ struct HealthResponse {
     service: String,
     version: String,
     timestamp: String,
+    uptime: String,
+    endpoints: Vec<String>,
 }
 
 #[derive(Serialize)]
 struct ErrorResponse {
     success: bool,
     error: String,
+    timestamp: String,
 }
 
-async fn health(_req: HttpRequest) -> Result<HttpResponse> {
-    info!("Health check requested");
+// Root handler - returns basic health status
+async fn root_handler(_req: HttpRequest) -> Result<HttpResponse> {
+    info!("Root endpoint accessed");
+    
+    let response = HealthResponse {
+        status: "healthy".to_string(),
+        service: "spartan-zkp".to_string(),
+        version: "0.1.0".to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        uptime: "online".to_string(),
+        endpoints: vec![
+            "GET /".to_string(),
+            "GET /health".to_string(),
+            "POST /zkp".to_string(),
+            "OPTIONS /zkp".to_string(),
+        ],
+    };
     
     Ok(HttpResponse::Ok()
         .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
         .insert_header(("Content-Type", "application/json"))
-        .json(HealthResponse {
-            status: "healthy".to_string(),
-            service: "spartan-zkp".to_string(),
-            version: "0.1.0".to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        }))
+        .json(response))
 }
 
+// Health check handler
+async fn health_handler(_req: HttpRequest) -> Result<HttpResponse> {
+    info!("Health check endpoint accessed");
+    
+    let response = HealthResponse {
+        status: "healthy".to_string(),
+        service: "spartan-zkp".to_string(),
+        version: "0.1.0".to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        uptime: "online".to_string(),
+        endpoints: vec![
+            "GET /".to_string(),
+            "GET /health".to_string(),
+            "POST /zkp".to_string(),
+            "OPTIONS /zkp".to_string(),
+        ],
+    };
+    
+    Ok(HttpResponse::Ok()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(response))
+}
+
+// ZKP operations handler - only for POST requests
 async fn zkp_operations(req_body: web::Json<ZkpRequest>) -> Result<HttpResponse> {
     let start_time = std::time::Instant::now();
     
     info!("Processing ZKP operation: {}", req_body.operation);
     
-    match req_body.operation.as_str() {
+    let result = match req_body.operation.as_str() {
         "prove" => {
             if let (Some(witness_data), Some(max_balance)) = (&req_body.witness_data, &req_body.max_balance) {
                 let proof = generate_spartan_proof(witness_data, *max_balance).await;
                 let processing_time = start_time.elapsed().as_millis() as u64;
                 
-                Ok(HttpResponse::Ok()
-                    .insert_header(("Access-Control-Allow-Origin", "*"))
-                    .insert_header(("Content-Type", "application/json"))
-                    .json(ZkpResponse {
-                        success: true,
-                        proof: Some(proof),
-                        public_signals: Some(vec!["1".to_string()]),
-                        verification_result: None,
-                        error: None,
-                        processing_time_ms: Some(processing_time),
-                    }))
+                ZkpResponse {
+                    success: true,
+                    proof: Some(proof),
+                    public_signals: Some(vec!["1".to_string()]),
+                    verification_result: None,
+                    error: None,
+                    processing_time_ms: Some(processing_time),
+                }
             } else {
-                Ok(HttpResponse::BadRequest()
-                    .insert_header(("Access-Control-Allow-Origin", "*"))
-                    .insert_header(("Content-Type", "application/json"))
-                    .json(ZkpResponse {
-                        success: false,
-                        proof: None,
-                        public_signals: None,
-                        verification_result: None,
-                        error: Some("Missing witness_data or max_balance".to_string()),
-                        processing_time_ms: None,
-                    }))
+                ZkpResponse {
+                    success: false,
+                    proof: None,
+                    public_signals: None,
+                    verification_result: None,
+                    error: Some("Missing witness_data or max_balance".to_string()),
+                    processing_time_ms: None,
+                }
             }
         },
         "verify" => {
@@ -92,45 +128,82 @@ async fn zkp_operations(req_body: web::Json<ZkpRequest>) -> Result<HttpResponse>
                 let is_valid = verify_spartan_proof(proof_data, public_inputs).await;
                 let processing_time = start_time.elapsed().as_millis() as u64;
                 
-                Ok(HttpResponse::Ok()
-                    .insert_header(("Access-Control-Allow-Origin", "*"))
-                    .insert_header(("Content-Type", "application/json"))
-                    .json(ZkpResponse {
-                        success: true,
-                        proof: None,
-                        public_signals: None,
-                        verification_result: Some(is_valid),
-                        error: None,
-                        processing_time_ms: Some(processing_time),
-                    }))
+                ZkpResponse {
+                    success: true,
+                    proof: None,
+                    public_signals: None,
+                    verification_result: Some(is_valid),
+                    error: None,
+                    processing_time_ms: Some(processing_time),
+                }
             } else {
-                Ok(HttpResponse::BadRequest()
-                    .insert_header(("Access-Control-Allow-Origin", "*"))
-                    .insert_header(("Content-Type", "application/json"))
-                    .json(ZkpResponse {
-                        success: false,
-                        proof: None,
-                        public_signals: None,
-                        verification_result: None,
-                        error: Some("Missing proof_data or public_inputs".to_string()),
-                        processing_time_ms: None,
-                    }))
-            }
-        },
-        _ => {
-            Ok(HttpResponse::BadRequest()
-                .insert_header(("Access-Control-Allow-Origin", "*"))
-                .insert_header(("Content-Type", "application/json"))
-                .json(ZkpResponse {
+                ZkpResponse {
                     success: false,
                     proof: None,
                     public_signals: None,
                     verification_result: None,
-                    error: Some(format!("Unknown operation: {}", req_body.operation)),
+                    error: Some("Missing proof_data or public_inputs".to_string()),
                     processing_time_ms: None,
-                }))
+                }
+            }
+        },
+        _ => {
+            ZkpResponse {
+                success: false,
+                proof: None,
+                public_signals: None,
+                verification_result: None,
+                error: Some(format!("Unknown operation: {}", req_body.operation)),
+                processing_time_ms: None,
+            }
         }
-    }
+    };
+
+    let status_code = if result.success { 
+        HttpResponse::Ok() 
+    } else { 
+        HttpResponse::BadRequest() 
+    };
+
+    Ok(status_code
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(result))
+}
+
+// CORS preflight handler
+async fn preflight_handler(_req: HttpRequest) -> Result<HttpResponse> {
+    info!("CORS preflight request received");
+    
+    Ok(HttpResponse::Ok()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
+        .insert_header(("Access-Control-Max-Age", "86400"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(serde_json::json!({
+            "message": "CORS preflight successful",
+            "allowed_methods": ["GET", "POST", "OPTIONS"],
+            "allowed_headers": ["Content-Type", "Authorization"]
+        })))
+}
+
+// 404 handler
+async fn not_found(_req: HttpRequest) -> Result<HttpResponse> {
+    info!("404 Not Found accessed");
+    
+    Ok(HttpResponse::NotFound()
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
+        .insert_header(("Content-Type", "application/json"))
+        .json(ErrorResponse {
+            success: false,
+            error: "Endpoint not found. Available endpoints: GET /, GET /health, POST /zkp, OPTIONS /zkp".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }))
 }
 
 async fn generate_spartan_proof(witness_data: &[i32], max_balance: i32) -> String {
@@ -161,40 +234,6 @@ async fn verify_spartan_proof(proof_data: &str, _public_inputs: &[String]) -> bo
     serde_json::from_str::<serde_json::Value>(proof_data).is_ok()
 }
 
-async fn preflight() -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok()
-        .insert_header(("Access-Control-Allow-Origin", "*"))
-        .insert_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
-        .insert_header(("Access-Control-Allow-Headers", "Content-Type, Authorization"))
-        .insert_header(("Content-Type", "application/json"))
-        .json(serde_json::json!({"message": "CORS preflight successful"})))
-}
-
-// Root handler that returns health status
-async fn root_handler() -> Result<HttpResponse> {
-    info!("Root endpoint accessed");
-    Ok(HttpResponse::Ok()
-        .insert_header(("Access-Control-Allow-Origin", "*"))
-        .insert_header(("Content-Type", "application/json"))
-        .json(HealthResponse {
-            status: "healthy".to_string(),
-            service: "spartan-zkp".to_string(),
-            version: "0.1.0".to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        }))
-}
-
-// 404 handler
-async fn not_found() -> Result<HttpResponse> {
-    Ok(HttpResponse::NotFound()
-        .insert_header(("Access-Control-Allow-Origin", "*"))
-        .insert_header(("Content-Type", "application/json"))
-        .json(ErrorResponse {
-            success: false,
-            error: "Endpoint not found. Available endpoints: GET /, GET /health, POST /zkp".to_string(),
-        }))
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
@@ -203,6 +242,11 @@ async fn main() -> std::io::Result<()> {
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     
     info!("Starting Spartan ZKP service on {}:{}", host, port);
+    info!("Available endpoints:");
+    info!("  GET  /        - Root health status");
+    info!("  GET  /health  - Detailed health check");
+    info!("  POST /zkp     - ZKP operations (prove/verify)");
+    info!("  OPTIONS /zkp  - CORS preflight");
     
     HttpServer::new(|| {
         App::new()
@@ -215,9 +259,9 @@ async fn main() -> std::io::Result<()> {
                     .add(("Content-Type", "application/json"))
             )
             .route("/", web::get().to(root_handler))
-            .route("/health", web::get().to(health))
+            .route("/health", web::get().to(health_handler))
             .route("/zkp", web::post().to(zkp_operations))
-            .route("/zkp", web::options().to(preflight))
+            .route("/zkp", web::options().to(preflight_handler))
             .default_service(web::route().to(not_found))
     })
     .bind(format!("{}:{}", host, port))?
