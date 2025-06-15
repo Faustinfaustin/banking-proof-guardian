@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Shield, Play, Download, Clock, CheckCircle, Cpu, FileCode } from 'lucide-react';
 import { useZKProof, type Account } from '@/hooks/useZKProof';
+import { AccountType, getAccountTypeInfo } from '@/utils/accountTypes';
 
 interface ProofGenerationStep {
   id: string;
@@ -67,14 +68,26 @@ const ProofGenerator = () => {
       setProgress(((i + 1) / steps.length) * 80); // 80% for steps, 20% for actual proof
     }
 
-    // Generate mock accounts for demonstration
-    const mockAccounts: Account[] = Array.from({ length: 100 }, (_, i) => ({
-      balance: Math.floor(Math.random() * 95000) + 1000, // $1,000 to $95,000
-      salt: Math.random().toString(36).substring(2, 15)
-    }));
+    // Generate mock accounts with different types for demonstration
+    const accountTypes: AccountType[] = ['individual', 'association', 'large_condominium'];
+    const mockAccounts: Account[] = Array.from({ length: 100 }, (_, i) => {
+      const accountType = accountTypes[Math.floor(Math.random() * accountTypes.length)];
+      const typeInfo = getAccountTypeInfo(accountType);
+      
+      // Mix of compliant and potentially non-compliant accounts
+      const baseBalance = Math.floor(Math.random() * typeInfo.limit * 0.8) + 1000;
+      const isViolation = Math.random() < 0.1; // 10% chance of violation
+      const balance = isViolation ? typeInfo.limit + Math.floor(Math.random() * 10000) : baseBalance;
+      
+      return {
+        balance,
+        salt: Math.random().toString(36).substring(2, 15),
+        accountType
+      };
+    });
 
     // Call the real edge function
-    const result = await generateProof(mockAccounts, 100000);
+    const result = await generateProof(mockAccounts);
     
     if (result) {
       setGeneratedProof(JSON.stringify({
@@ -126,10 +139,10 @@ const ProofGenerator = () => {
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <Shield className="w-5 h-5 mr-2 text-yellow-400" />
-            Real Zero-Knowledge Proof Generation
+            Account Type-Specific Zero-Knowledge Proof Generation
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Generate cryptographic proofs using Supabase Edge Functions with zkSNARK protocols
+            Generate cryptographic proofs with account type-specific compliance validation (Individual €22,950, Association €76,500, Large Condominium €100,000)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -137,7 +150,7 @@ const ProofGenerator = () => {
             <div className="space-y-2">
               <h3 className="text-white font-semibold">Ready to Generate Proof</h3>
               <p className="text-sm text-blue-200">
-                This will create a real zero-knowledge proof for 100 accounts using cryptographic protocols
+                This will create a real zero-knowledge proof for 100 mixed account types using Article R221-2 compliance rules
               </p>
             </div>
             <Button 
@@ -220,7 +233,7 @@ const ProofGenerator = () => {
             <CardTitle className="text-white flex items-center justify-between">
               <div className="flex items-center">
                 <FileCode className="w-5 h-5 mr-2" />
-                Generated Cryptographic Proof
+                Generated Account Type-Specific Proof
               </div>
               <Button 
                 onClick={downloadProof}
@@ -232,7 +245,7 @@ const ProofGenerator = () => {
               </Button>
             </CardTitle>
             <CardDescription className="text-blue-200">
-              Real zero-knowledge proof generated using Supabase Edge Functions
+              Real zero-knowledge proof generated with account type-specific compliance validation
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -242,23 +255,47 @@ const ProofGenerator = () => {
               className="bg-black/30 border-white/20 text-gray-300 font-mono text-sm min-h-[300px]"
             />
             {proofMetadata && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-blue-200">Protocol:</span>
-                  <p className="text-white font-medium">{proofMetadata.protocol}</p>
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-200">Protocol:</span>
+                    <p className="text-white font-medium">{proofMetadata.protocol}</p>
+                  </div>
+                  <div>
+                    <span className="text-blue-200">Accounts:</span>
+                    <p className="text-white font-medium">{proofMetadata.accountsVerified} verified</p>
+                  </div>
+                  <div>
+                    <span className="text-blue-200">Processing Time:</span>
+                    <p className="text-white font-medium">{proofMetadata.processingTime}ms</p>
+                  </div>
+                  <div>
+                    <span className="text-blue-200">Generated:</span>
+                    <p className="text-white font-medium">{new Date(proofMetadata.timestamp).toLocaleTimeString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-blue-200">Accounts:</span>
-                  <p className="text-white font-medium">{proofMetadata.accountsVerified} verified</p>
-                </div>
-                <div>
-                  <span className="text-blue-200">Processing Time:</span>
-                  <p className="text-white font-medium">{proofMetadata.processingTime}ms</p>
-                </div>
-                <div>
-                  <span className="text-blue-200">Generated:</span>
-                  <p className="text-white font-medium">{new Date(proofMetadata.timestamp).toLocaleTimeString()}</p>
-                </div>
+                
+                {/* Account Type Distribution */}
+                {proofMetadata.accountTypes && (
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="text-white font-semibold mb-3">Account Type Distribution</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {Object.entries(proofMetadata.accountTypes).map(([type, count]) => {
+                        const typeInfo = getAccountTypeInfo(type as AccountType);
+                        const limit = proofMetadata.accountTypeLimits?.[type];
+                        return (
+                          <div key={type} className="bg-white/5 rounded p-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-blue-300 text-sm">{typeInfo.label}</span>
+                              <Badge variant="outline" className="text-xs">{count} accounts</Badge>
+                            </div>
+                            <p className="text-white text-xs">Limit: €{limit?.toLocaleString()}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

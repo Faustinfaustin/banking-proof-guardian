@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AccountType } from '@/utils/accountTypes';
+import { AccountType, getAccountTypeInfo } from '@/utils/accountTypes';
 
 export interface Account {
   balance: number;
@@ -19,6 +19,7 @@ export interface ProofResult {
     timestamp: string;
     processingTime: number;
     accountTypes?: Record<AccountType, number>;
+    accountTypeLimits?: Record<AccountType, number>;
   };
 }
 
@@ -30,6 +31,7 @@ export interface VerificationResult {
     timestamp: string;
     processingTime: number;
     accountTypes?: Record<AccountType, number>;
+    accountTypeLimits?: Record<AccountType, number>;
   };
 }
 
@@ -38,16 +40,37 @@ export const useZKProof = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const { toast } = useToast();
 
-  const generateProof = async (accounts: Account[], maxBalance: number = 100000): Promise<ProofResult | null> => {
+  const generateProof = async (accounts: Account[]): Promise<ProofResult | null> => {
     setIsGenerating(true);
     
     try {
-      console.log(`Generating ZK proof for ${accounts.length} accounts with account types`);
+      console.log(`Generating ZK proof for ${accounts.length} accounts with mixed account types`);
       
-      // Count accounts by type
+      // Validate each account against its specific type limit
+      let allCompliant = true;
+      const violations: string[] = [];
+      
+      for (const account of accounts) {
+        const accountType = account.accountType || 'individual';
+        const typeInfo = getAccountTypeInfo(accountType);
+        
+        if (account.balance > typeInfo.limit) {
+          allCompliant = false;
+          violations.push(`${typeInfo.label} account exceeds ${typeInfo.currency} ${typeInfo.limit.toLocaleString()} limit with balance ${typeInfo.currency} ${account.balance.toLocaleString()}`);
+        }
+      }
+      
+      // Count accounts by type and get their limits
       const accountTypes = accounts.reduce((acc, account) => {
         const type = account.accountType || 'individual';
         acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<AccountType, number>);
+
+      const accountTypeLimits = accounts.reduce((acc, account) => {
+        const type = account.accountType || 'individual';
+        const typeInfo = getAccountTypeInfo(type);
+        acc[type] = typeInfo.limit;
         return acc;
       }, {} as Record<AccountType, number>);
       
@@ -55,8 +78,9 @@ export const useZKProof = () => {
         body: {
           operation: 'generate',
           accounts,
-          maxBalance,
-          accountTypes
+          accountTypes,
+          accountTypeLimits,
+          allCompliant
         }
       });
 
@@ -68,9 +92,13 @@ export const useZKProof = () => {
         throw new Error(data.error || 'Proof generation failed');
       }
 
+      const complianceStatus = allCompliant ? 'compliant' : 'non-compliant';
+      const violationDetails = violations.length > 0 ? ` (${violations.join(', ')})` : '';
+
       toast({
-        title: "Proof Generated Successfully",
-        description: `Generated proof for ${data.metadata.accountsVerified} accounts with mixed account types using ${data.metadata.protocol}`,
+        title: allCompliant ? "Proof Generated Successfully" : "Proof Generated - Compliance Issues Detected",
+        description: `Generated proof for ${data.metadata.accountsVerified} accounts - All accounts are ${complianceStatus}${violationDetails}`,
+        variant: allCompliant ? "default" : "destructive"
       });
 
       return {
@@ -78,7 +106,8 @@ export const useZKProof = () => {
         publicSignals: data.publicSignals,
         metadata: {
           ...data.metadata,
-          accountTypes
+          accountTypes,
+          accountTypeLimits
         }
       };
 
@@ -99,7 +128,7 @@ export const useZKProof = () => {
     setIsVerifying(true);
     
     try {
-      console.log('Verifying ZK proof with account type support');
+      console.log('Verifying ZK proof with account type-specific compliance checks');
       
       const { data, error } = await supabase.functions.invoke('zkp-operations', {
         body: {
@@ -121,7 +150,9 @@ export const useZKProof = () => {
       
       toast({
         title: isValid ? "Proof Verified Successfully" : "Proof Verification Failed",
-        description: isValid ? "The proof is valid and shows compliance with Article R221-2" : "The proof is invalid or shows non-compliance",
+        description: isValid ? 
+          "The proof is valid and shows all accounts comply with their respective Article R221-2 limits" : 
+          "The proof is invalid or shows non-compliance with account type limits",
         variant: isValid ? "default" : "destructive"
       });
 
