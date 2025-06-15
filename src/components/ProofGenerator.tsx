@@ -287,7 +287,7 @@ const ProofGenerator = () => {
                           <div key={type} className="bg-white/5 rounded p-3">
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-blue-300 text-sm">{typeInfo.label}</span>
-                              <Badge variant="outline" className="text-xs">{count} accounts</Badge>
+                              <Badge variant="outline" className="text-xs">{count as number} accounts</Badge>
                             </div>
                             <p className="text-white text-xs">Limit: €{limit?.toLocaleString()}</p>
                           </div>
