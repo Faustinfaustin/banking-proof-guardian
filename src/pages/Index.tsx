@@ -10,9 +10,23 @@ import ProofGenerator from '@/components/ProofGenerator';
 import ComplianceVerifier from '@/components/ComplianceVerifier';
 import SystemOverview from '@/components/SystemOverview';
 import WasmIntegration from '@/components/WasmIntegration';
+import { Account } from '@/hooks/useZKProof';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  const addAccount = (account: Account) => {
+    setAccounts(prev => [...prev, account]);
+  };
+
+  const updateAccount = (index: number, updatedAccount: Account) => {
+    setAccounts(prev => prev.map((acc, i) => i === index ? updatedAccount : acc));
+  };
+
+  const deleteAccount = (index: number) => {
+    setAccounts(prev => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
@@ -51,8 +65,8 @@ const Index = () => {
           </h2>
           <p className="text-blue-200 text-lg max-w-3xl">
             Prove regulatory compliance without revealing sensitive financial data. 
-            Our system uses WebAssembly-powered Spartan zkSNARK protocol to verify that no account exceeds $100,000 
-            while maintaining complete privacy.
+            Our system uses WebAssembly-powered Spartan zkSNARK protocol to verify that no account exceeds 
+            their respective limits while maintaining complete privacy.
           </p>
         </div>
 
@@ -81,7 +95,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <SystemOverview />
+            <SystemOverview accounts={accounts} />
           </TabsContent>
 
           <TabsContent value="wasm">
@@ -89,11 +103,16 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="accounts">
-            <AccountManager />
+            <AccountManager 
+              accounts={accounts}
+              onAddAccount={addAccount}
+              onUpdateAccount={updateAccount}
+              onDeleteAccount={deleteAccount}
+            />
           </TabsContent>
 
           <TabsContent value="proof">
-            <ProofGenerator />
+            <ProofGenerator accounts={accounts} />
           </TabsContent>
 
           <TabsContent value="verify">

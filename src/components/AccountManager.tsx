@@ -10,26 +10,22 @@ import { Users, Plus, Hash, Shield, AlertTriangle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { AccountType, ACCOUNT_TYPES, getAccountTypeInfo, formatCurrency } from '@/utils/accountTypes';
+import { Account } from '@/hooks/useZKProof';
 import AdminLogin from './AdminLogin';
 
-interface Account {
-  id: string;
-  balance: number;
-  hashedBalance: string;
-  salt: string;
-  accountType: AccountType;
-  isCompliant: boolean;
+interface AccountManagerProps {
+  accounts: Account[];
+  onAddAccount: (account: Account) => void;
+  onUpdateAccount: (index: number, updatedAccount: Account) => void;
+  onDeleteAccount: (index: number) => void;
 }
 
-const AccountManager = () => {
+const AccountManager = ({ accounts, onAddAccount, onUpdateAccount, onDeleteAccount }: AccountManagerProps) => {
   const { toast } = useToast();
   const { isAdmin, isAuthenticating, authenticateAdmin, logout } = useAdminAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [newBalance, setNewBalance] = useState('');
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('individual');
   const [loading, setLoading] = useState(false);
-
-  // No mock data generation - start with empty accounts array
 
   const addAccount = () => {
     if (!newBalance || isNaN(Number(newBalance))) {
@@ -44,26 +40,21 @@ const AccountManager = () => {
     setLoading(true);
     setTimeout(() => {
       const balance = Number(newBalance);
-      const typeInfo = getAccountTypeInfo(selectedAccountType);
       const salt = Math.random().toString(36).substring(2, 15);
-      const hashedBalance = `0x${Math.random().toString(16).substring(2, 18)}...`;
       
       const newAccount: Account = {
-        id: `ACC-${(accounts.length + 1).toString().padStart(3, '0')}`,
         balance,
-        hashedBalance,
         salt,
-        accountType: selectedAccountType,
-        isCompliant: balance <= typeInfo.limit
+        accountType: selectedAccountType
       };
 
-      setAccounts([...accounts, newAccount]);
+      onAddAccount(newAccount);
       setNewBalance('');
       setLoading(false);
 
       toast({
         title: "Account Added",
-        description: `${typeInfo.label} account ${newAccount.id} has been added with hashed balance.`,
+        description: `${getAccountTypeInfo(selectedAccountType).label} account has been added with balance ${formatCurrency(balance)}.`,
       });
     }, 1000);
   };
@@ -74,15 +65,24 @@ const AccountManager = () => {
 
   const complianceStats = {
     total: accounts.length,
-    compliant: accounts.filter(acc => acc.isCompliant).length,
-    nonCompliant: accounts.filter(acc => !acc.isCompliant).length
+    compliant: accounts.filter(acc => {
+      const typeInfo = getAccountTypeInfo(acc.accountType || 'individual');
+      return acc.balance <= typeInfo.limit;
+    }).length,
+    nonCompliant: accounts.filter(acc => {
+      const typeInfo = getAccountTypeInfo(acc.accountType || 'individual');
+      return acc.balance > typeInfo.limit;
+    }).length
   };
 
-  const statsByType = Object.values(ACCOUNT_TYPES).map(typeInfo => ({
-    ...typeInfo,
-    count: accounts.filter(acc => acc.accountType === typeInfo.id).length,
-    compliant: accounts.filter(acc => acc.accountType === typeInfo.id && acc.isCompliant).length
-  }));
+  const statsByType = Object.values(ACCOUNT_TYPES).map(typeInfo => {
+    const typeAccounts = accounts.filter(acc => (acc.accountType || 'individual') === typeInfo.id);
+    return {
+      ...typeInfo,
+      count: typeAccounts.length,
+      compliant: typeAccounts.filter(acc => acc.balance <= typeInfo.limit).length
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -229,7 +229,7 @@ const AccountManager = () => {
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {loading ? 'Hashing...' : 'Add Account'}
+                {loading ? 'Adding...' : 'Add Account'}
               </Button>
             </div>
           </div>
@@ -250,7 +250,7 @@ const AccountManager = () => {
             Account Registry
           </CardTitle>
           <CardDescription className="text-blue-200">
-            All account balances are stored as hashed values for privacy
+            All account balances are stored with type-specific compliance validation
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -265,40 +265,37 @@ const AccountManager = () => {
                   <TableRow className="border-white/20">
                     <TableHead className="text-blue-200">Account ID</TableHead>
                     <TableHead className="text-blue-200">Type</TableHead>
-                    <TableHead className="text-blue-200">Hashed Balance</TableHead>
+                    <TableHead className="text-blue-200">Balance</TableHead>
                     <TableHead className="text-blue-200">Salt</TableHead>
                     <TableHead className="text-blue-200">Status</TableHead>
-                    <TableHead className="text-blue-200">Actual Balance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.map((account) => {
-                    const typeInfo = getAccountTypeInfo(account.accountType);
+                  {accounts.map((account, index) => {
+                    const typeInfo = getAccountTypeInfo(account.accountType || 'individual');
+                    const isCompliant = account.balance <= typeInfo.limit;
                     return (
-                      <TableRow key={account.id} className="border-white/20">
-                        <TableCell className="text-white font-medium">{account.id}</TableCell>
+                      <TableRow key={index} className="border-white/20">
+                        <TableCell className="text-white font-medium">ACC-{(index + 1).toString().padStart(3, '0')}</TableCell>
                         <TableCell>
                           <div className="text-blue-300 text-sm">
                             <div>{typeInfo.label}</div>
                             <div className="text-xs text-gray-400">{formatCurrency(typeInfo.limit)} limit</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-300 font-mono text-sm">
-                          {account.hashedBalance}
+                        <TableCell className="text-white">
+                          {formatCurrency(account.balance)}
                         </TableCell>
                         <TableCell className="text-gray-400 font-mono text-sm">
                           {account.salt.substring(0, 8)}...
                         </TableCell>
                         <TableCell>
                           <Badge 
-                            variant={account.isCompliant ? "default" : "destructive"}
-                            className={account.isCompliant ? "bg-green-500" : "bg-red-500"}
+                            variant={isCompliant ? "default" : "destructive"}
+                            className={isCompliant ? "bg-green-500" : "bg-red-500"}
                           >
-                            {account.isCompliant ? 'Compliant' : 'Non-Compliant'}
+                            {isCompliant ? 'Compliant' : 'Non-Compliant'}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-white">
-                          {formatCurrency(account.balance)}
                         </TableCell>
                       </TableRow>
                     );
