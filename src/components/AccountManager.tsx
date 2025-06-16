@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Shield, AlertTriangle, LogOut } from 'lucide-react';
+import { Users, Plus, Hash, Shield, AlertTriangle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { AccountType, ACCOUNT_TYPES, getAccountTypeInfo, formatCurrency } from '@/utils/accountTypes';
@@ -28,35 +29,7 @@ const AccountManager = () => {
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('individual');
   const [loading, setLoading] = useState(false);
 
-  // Generate mock accounts on component mount
-  useEffect(() => {
-    if (isAdmin) {
-      generateMockAccounts();
-    }
-  }, [isAdmin]);
-
-  const generateMockAccounts = () => {
-    const mockAccounts: Account[] = [];
-    const accountTypes: AccountType[] = ['individual', 'association', 'large_condominium'];
-    
-    for (let i = 1; i <= 100; i++) {
-      const accountType = accountTypes[Math.floor(Math.random() * accountTypes.length)];
-      const typeInfo = getAccountTypeInfo(accountType);
-      const balance = Math.floor(Math.random() * (typeInfo.limit * 1.2)) + 1000; // Some accounts may exceed limit
-      const salt = Math.random().toString(36).substring(2, 15);
-      const hashedBalance = `0x${Math.random().toString(16).substring(2, 18)}...`;
-      
-      mockAccounts.push({
-        id: `ACC-${i.toString().padStart(3, '0')}`,
-        balance,
-        hashedBalance,
-        salt,
-        accountType,
-        isCompliant: balance <= typeInfo.limit
-      });
-    }
-    setAccounts(mockAccounts);
-  };
+  // No mock data generation - start with empty accounts array
 
   const addAccount = () => {
     if (!newBalance || isNaN(Number(newBalance))) {
@@ -266,6 +239,74 @@ const AccountManager = () => {
               Limit: {formatCurrency(getAccountTypeInfo(selectedAccountType).limit)}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Registry */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center">
+            <Hash className="w-5 h-5 mr-2" />
+            Account Registry
+          </CardTitle>
+          <CardDescription className="text-blue-200">
+            All account balances are stored as hashed values for privacy
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {accounts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-blue-200">No accounts created yet. Add your first account above.</p>
+            </div>
+          ) : (
+            <div className="rounded-md border border-white/20">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/20">
+                    <TableHead className="text-blue-200">Account ID</TableHead>
+                    <TableHead className="text-blue-200">Type</TableHead>
+                    <TableHead className="text-blue-200">Hashed Balance</TableHead>
+                    <TableHead className="text-blue-200">Salt</TableHead>
+                    <TableHead className="text-blue-200">Status</TableHead>
+                    <TableHead className="text-blue-200">Actual Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accounts.map((account) => {
+                    const typeInfo = getAccountTypeInfo(account.accountType);
+                    return (
+                      <TableRow key={account.id} className="border-white/20">
+                        <TableCell className="text-white font-medium">{account.id}</TableCell>
+                        <TableCell>
+                          <div className="text-blue-300 text-sm">
+                            <div>{typeInfo.label}</div>
+                            <div className="text-xs text-gray-400">{formatCurrency(typeInfo.limit)} limit</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-300 font-mono text-sm">
+                          {account.hashedBalance}
+                        </TableCell>
+                        <TableCell className="text-gray-400 font-mono text-sm">
+                          {account.salt.substring(0, 8)}...
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={account.isCompliant ? "default" : "destructive"}
+                            className={account.isCompliant ? "bg-green-500" : "bg-red-500"}
+                          >
+                            {account.isCompliant ? 'Compliant' : 'Non-Compliant'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-white">
+                          {formatCurrency(account.balance)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
