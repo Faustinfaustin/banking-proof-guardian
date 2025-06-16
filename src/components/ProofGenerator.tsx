@@ -6,9 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Shield, Play, Download, Clock, CheckCircle, Cpu, FileCode, Lock } from 'lucide-react';
+import { Shield, Play, Download, Clock, CheckCircle, Cpu, FileCode, AlertTriangle } from 'lucide-react';
 import { useZKProof, type Account } from '@/hooks/useZKProof';
 import { AccountType, getAccountTypeInfo, formatCurrency, ACCOUNT_TYPES } from '@/utils/accountTypes';
 
@@ -20,15 +18,16 @@ interface ProofGenerationStep {
   duration?: number;
 }
 
-const ProofGenerator = () => {
+interface ProofGeneratorProps {
+  accounts: Account[];
+}
+
+const ProofGenerator = ({ accounts }: ProofGeneratorProps) => {
   const { generateProof, isGenerating } = useZKProof();
   const [progress, setProgress] = useState(0);
   const [generatedProof, setGeneratedProof] = useState('');
   const [proofMetadata, setProofMetadata] = useState<any>(null);
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('individual');
-  const [isGovAuthenticated, setIsGovAuthenticated] = useState(false);
-  const [govPassword, setGovPassword] = useState('');
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [steps, setSteps] = useState<ProofGenerationStep[]>([
     {
       id: 'hash',
@@ -56,31 +55,14 @@ const ProofGenerator = () => {
     }
   ]);
 
-  const authenticateGovernment = async () => {
-    setIsAuthenticating(true);
-    
-    // Simulate government authentication
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (govPassword === 'admin123') {
-      setIsGovAuthenticated(true);
-      setGovPassword('');
-    } else {
-      alert('Invalid government administrator credentials');
-    }
-    
-    setIsAuthenticating(false);
-  };
-
   const generateAccountTypeSpecificProof = async () => {
-    if (!isGovAuthenticated) {
-      alert('Government administrator access required');
+    // Filter accounts by selected type
+    const filteredAccounts = accounts.filter(account => account.accountType === selectedAccountType);
+    
+    if (filteredAccounts.length === 0) {
+      alert(`No ${getAccountTypeInfo(selectedAccountType).label} accounts found in the registry`);
       return;
     }
-
-    // Use the account type limit as the test amount
-    const selectedTypeInfo = getAccountTypeInfo(selectedAccountType);
-    const amount = selectedTypeInfo.limit;
 
     setProgress(0);
     setGeneratedProof('');
@@ -100,15 +82,8 @@ const ProofGenerator = () => {
       setProgress(((i + 1) / steps.length) * 80); // 80% for steps, 20% for actual proof
     }
 
-    // Create a test account with the specified type and its limit amount
-    const testAccount: Account = {
-      balance: amount,
-      salt: Math.random().toString(36).substring(2, 15),
-      accountType: selectedAccountType
-    };
-
-    // Call the real edge function with single account
-    const result = await generateProof([testAccount]);
+    // Call the real edge function with filtered accounts
+    const result = await generateProof(filteredAccounts);
     
     if (result) {
       setGeneratedProof(JSON.stringify({
@@ -154,200 +129,144 @@ const ProofGenerator = () => {
   };
 
   const selectedTypeInfo = getAccountTypeInfo(selectedAccountType);
+  const filteredAccounts = accounts.filter(account => account.accountType === selectedAccountType);
 
   return (
     <div className="space-y-6">
-      {/* Government Administrator Access */}
-      {!isGovAuthenticated && (
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center mb-4">
-              <Shield className="w-6 h-6 text-white" />
+      {/* Generation Controls */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center">
+            <Shield className="w-5 h-5 mr-2 text-yellow-400" />
+            Zero-Knowledge Proof Generation
+          </CardTitle>
+          <CardDescription className="text-blue-200">
+            Generate cryptographic proofs with account type-specific compliance validation from Account Registry
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Account Type Selection */}
+            <div>
+              <label className="block text-white text-sm mb-2">Account Type</label>
+              <Select value={selectedAccountType} onValueChange={(value: AccountType) => setSelectedAccountType(value)}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(ACCOUNT_TYPES).map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      <div>
+                        <div>{type.label}</div>
+                        <div className="text-xs text-gray-500">{formatCurrency(type.limit)} limit</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <CardTitle className="text-white">Government Administrator Access</CardTitle>
-            <CardDescription className="text-blue-200">
-              Administrative credentials required to manage accounts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="govPassword" className="text-white">Admin Password</Label>
-                <Input
-                  id="govPassword"
-                  type="password"
-                  value={govPassword}
-                  onChange={(e) => setGovPassword(e.target.value)}
-                  placeholder="Enter administrator password"
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                  disabled={isAuthenticating}
-                  onKeyPress={(e) => e.key === 'Enter' && authenticateGovernment()}
-                />
-                <p className="text-xs text-blue-300">Demo password: admin123</p>
-              </div>
+
+            {/* Generate Button */}
+            <div className="flex items-end">
               <Button 
-                onClick={authenticateGovernment}
-                disabled={!govPassword || isAuthenticating}
+                onClick={generateAccountTypeSpecificProof} 
+                disabled={isGenerating || filteredAccounts.length === 0}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
-                {isAuthenticating ? (
+                {isGenerating ? (
                   <>
-                    <Lock className="w-4 h-4 mr-2 animate-spin" />
-                    Authenticating...
+                    <Clock className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
                   </>
                 ) : (
                   <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Access Admin Panel
+                    <Play className="w-4 h-4 mr-2" />
+                    Generate Proof
                   </>
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
 
-      {/* Generation Controls - Only shown after authentication */}
-      {isGovAuthenticated && (
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Shield className="w-5 h-5 mr-2 text-yellow-400" />
-              Government Zero-Knowledge Proof Generation
-              <Button 
-                onClick={() => setIsGovAuthenticated(false)}
-                variant="outline"
-                size="sm"
-                className="ml-auto bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                Logout
-              </Button>
-            </CardTitle>
-            <CardDescription className="text-blue-200">
-              Generate cryptographic proofs with account type-specific compliance validation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Account Type Selection */}
+          {/* Account Status Preview */}
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-white text-sm mb-2">Account Type</label>
-                <Select value={selectedAccountType} onValueChange={(value: AccountType) => setSelectedAccountType(value)}>
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(ACCOUNT_TYPES).map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        <div>
-                          <div>{type.label}</div>
-                          <div className="text-xs text-gray-500">{formatCurrency(type.limit)} limit</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <span className="text-blue-200 text-sm">Selected Type:</span>
+                <p className="text-white font-medium">{selectedTypeInfo.label}</p>
               </div>
-
-              {/* Generate Button */}
-              <div className="flex items-end">
-                <Button 
-                  onClick={generateAccountTypeSpecificProof} 
-                  disabled={isGenerating}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Clock className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Generate Proof
-                    </>
+              <div>
+                <span className="text-blue-200 text-sm">Compliance Limit:</span>
+                <p className="text-white font-medium">{formatCurrency(selectedTypeInfo.limit)}</p>
+              </div>
+              <div>
+                <span className="text-blue-200 text-sm">Accounts Found:</span>
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-medium">{filteredAccounts.length}</p>
+                  {filteredAccounts.length === 0 && (
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
                   )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Compliance Preview */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <span className="text-blue-200 text-sm">Selected Type:</span>
-                  <p className="text-white font-medium">{selectedTypeInfo.label}</p>
-                </div>
-                <div>
-                  <span className="text-blue-200 text-sm">Compliance Limit:</span>
-                  <p className="text-white font-medium">{formatCurrency(selectedTypeInfo.limit)}</p>
-                </div>
-                <div>
-                  <span className="text-blue-200 text-sm">Test Amount:</span>
-                  <p className="text-white font-medium">{formatCurrency(selectedTypeInfo.limit)}</p>
                 </div>
               </div>
             </div>
+          </div>
 
-            {isGenerating && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-blue-200">Overall Progress</span>
-                    <span className="text-white">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Generation Steps - Only shown after authentication */}
-      {isGovAuthenticated && (
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Cpu className="w-5 h-5 mr-2" />
-              Cryptographic Pipeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          {isGenerating && (
             <div className="space-y-4">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                  <div className="flex-shrink-0">
-                    {getStepIcon(step.status)}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-white font-medium">{step.name}</h4>
-                    <p className="text-sm text-blue-200">{step.description}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <Badge 
-                      variant="outline" 
-                      className={
-                        step.status === 'completed' ? 'bg-green-500/20 text-green-300 border-green-400' :
-                        step.status === 'running' ? 'bg-blue-500/20 text-blue-300 border-blue-400' :
-                        step.status === 'error' ? 'bg-red-500/20 text-red-300 border-red-400' :
-                        'bg-gray-500/20 text-gray-300 border-gray-400'
-                      }
-                    >
-                      {step.status === 'running' ? 'Processing' : 
-                       step.status === 'completed' ? 'Complete' : 
-                       step.status === 'error' ? 'Error' : 'Pending'}
-                    </Badge>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-blue-200">Overall Progress</span>
+                  <span className="text-white">{Math.round(progress)}%</span>
                 </div>
-              ))}
+                <Progress value={progress} className="h-2" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Generated Proof Display - Only shown after authentication */}
-      {isGovAuthenticated && generatedProof && (
+      {/* Generation Steps */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center">
+            <Cpu className="w-5 h-5 mr-2" />
+            Cryptographic Pipeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="flex-shrink-0">
+                  {getStepIcon(step.status)}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-white font-medium">{step.name}</h4>
+                  <p className="text-sm text-blue-200">{step.description}</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      step.status === 'completed' ? 'bg-green-500/20 text-green-300 border-green-400' :
+                      step.status === 'running' ? 'bg-blue-500/20 text-blue-300 border-blue-400' :
+                      step.status === 'error' ? 'bg-red-500/20 text-red-300 border-red-400' :
+                      'bg-gray-500/20 text-gray-300 border-gray-400'
+                    }
+                  >
+                    {step.status === 'running' ? 'Processing' : 
+                     step.status === 'completed' ? 'Complete' : 
+                     step.status === 'error' ? 'Error' : 'Pending'}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Generated Proof Display */}
+      {generatedProof && (
         <Card className="bg-white/10 backdrop-blur-md border-white/20">
           <CardHeader>
             <CardTitle className="text-white flex items-center justify-between">
@@ -365,7 +284,7 @@ const ProofGenerator = () => {
               </Button>
             </CardTitle>
             <CardDescription className="text-blue-200">
-              Zero-knowledge proof for {selectedTypeInfo.label} account with {formatCurrency(selectedTypeInfo.limit)} limit
+              Zero-knowledge proof for {filteredAccounts.length} {selectedTypeInfo.label} account(s) with {formatCurrency(selectedTypeInfo.limit)} limit
             </CardDescription>
           </CardHeader>
           <CardContent>
