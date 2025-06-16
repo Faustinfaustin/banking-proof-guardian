@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Shield, Play, Download, Clock, CheckCircle, Cpu, FileCode } from 'lucide-react';
 import { useZKProof, type Account } from '@/hooks/useZKProof';
-import { AccountType, getAccountTypeInfo } from '@/utils/accountTypes';
+import { AccountType, getAccountTypeInfo, formatCurrency, ACCOUNT_TYPES } from '@/utils/accountTypes';
 
 interface ProofGenerationStep {
   id: string;
@@ -22,6 +24,8 @@ const ProofGenerator = () => {
   const [progress, setProgress] = useState(0);
   const [generatedProof, setGeneratedProof] = useState('');
   const [proofMetadata, setProofMetadata] = useState<any>(null);
+  const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('individual');
+  const [testAmount, setTestAmount] = useState('');
   const [steps, setSteps] = useState<ProofGenerationStep[]>([
     {
       id: 'hash',
@@ -49,7 +53,12 @@ const ProofGenerator = () => {
     }
   ]);
 
-  const generateRealProof = async () => {
+  const generateAccountTypeSpecificProof = async () => {
+    const amount = Number(testAmount);
+    if (!testAmount || isNaN(amount) || amount <= 0) {
+      return;
+    }
+
     setProgress(0);
     setGeneratedProof('');
     setProofMetadata(null);
@@ -68,26 +77,15 @@ const ProofGenerator = () => {
       setProgress(((i + 1) / steps.length) * 80); // 80% for steps, 20% for actual proof
     }
 
-    // Generate mock accounts with different types for demonstration
-    const accountTypes: AccountType[] = ['individual', 'association', 'large_condominium'];
-    const mockAccounts: Account[] = Array.from({ length: 100 }, (_, i) => {
-      const accountType = accountTypes[Math.floor(Math.random() * accountTypes.length)];
-      const typeInfo = getAccountTypeInfo(accountType);
-      
-      // Mix of compliant and potentially non-compliant accounts
-      const baseBalance = Math.floor(Math.random() * typeInfo.limit * 0.8) + 1000;
-      const isViolation = Math.random() < 0.1; // 10% chance of violation
-      const balance = isViolation ? typeInfo.limit + Math.floor(Math.random() * 10000) : baseBalance;
-      
-      return {
-        balance,
-        salt: Math.random().toString(36).substring(2, 15),
-        accountType
-      };
-    });
+    // Create a single test account with the specified type and amount
+    const testAccount: Account = {
+      balance: amount,
+      salt: Math.random().toString(36).substring(2, 15),
+      accountType: selectedAccountType
+    };
 
-    // Call the real edge function
-    const result = await generateProof(mockAccounts);
+    // Call the real edge function with single account
+    const result = await generateProof([testAccount]);
     
     if (result) {
       setGeneratedProof(JSON.stringify({
@@ -114,7 +112,7 @@ const ProofGenerator = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `zkp-compliance-proof-${new Date().getTime()}.json`;
+    a.download = `zkp-compliance-proof-${selectedAccountType}-${new Date().getTime()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -132,6 +130,11 @@ const ProofGenerator = () => {
     }
   };
 
+  const selectedTypeInfo = getAccountTypeInfo(selectedAccountType);
+  const amount = Number(testAmount);
+  const isCompliant = !isNaN(amount) && amount > 0 && amount <= selectedTypeInfo.limit;
+  const willSucceed = testAmount && !isNaN(amount) && amount > 0 ? isCompliant : null;
+
   return (
     <div className="space-y-6">
       {/* Generation Controls */}
@@ -142,34 +145,93 @@ const ProofGenerator = () => {
             Account Type-Specific Zero-Knowledge Proof Generation
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Generate cryptographic proofs with account type-specific compliance validation (Individual €22,950, Association €76,500, Large Condominium €100,000)
+            Generate cryptographic proofs with account type-specific compliance validation
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <h3 className="text-white font-semibold">Ready to Generate Proof</h3>
-              <p className="text-sm text-blue-200">
-                This will create a real zero-knowledge proof for 100 mixed account types using Article R221-2 compliance rules
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Account Type Selection */}
+            <div>
+              <label className="block text-white text-sm mb-2">Account Type</label>
+              <Select value={selectedAccountType} onValueChange={(value: AccountType) => setSelectedAccountType(value)}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(ACCOUNT_TYPES).map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      <div>
+                        <div>{type.label}</div>
+                        <div className="text-xs text-gray-500">{formatCurrency(type.limit)} limit</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button 
-              onClick={generateRealProof} 
-              disabled={isGenerating}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-            >
-              {isGenerating ? (
-                <>
-                  <Clock className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Generate Real Proof
-                </>
-              )}
-            </Button>
+
+            {/* Test Amount Input */}
+            <div>
+              <label className="block text-white text-sm mb-2">Test Amount (EUR)</label>
+              <Input
+                placeholder="Enter test amount"
+                value={testAmount}
+                onChange={(e) => setTestAmount(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                type="number"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            {/* Generate Button */}
+            <div className="flex items-end">
+              <Button 
+                onClick={generateAccountTypeSpecificProof} 
+                disabled={isGenerating || !testAmount || isNaN(amount) || amount <= 0}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                {isGenerating ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Generate Proof
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Compliance Preview */}
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <span className="text-blue-200 text-sm">Selected Type:</span>
+                <p className="text-white font-medium">{selectedTypeInfo.label}</p>
+              </div>
+              <div>
+                <span className="text-blue-200 text-sm">Compliance Limit:</span>
+                <p className="text-white font-medium">{formatCurrency(selectedTypeInfo.limit)}</p>
+              </div>
+              <div>
+                <span className="text-blue-200 text-sm">Expected Result:</span>
+                {willSucceed !== null && (
+                  <Badge 
+                    variant={willSucceed ? "default" : "destructive"}
+                    className={willSucceed ? "bg-green-500" : "bg-red-500"}
+                  >
+                    {willSucceed ? 'Proof Will Succeed' : 'Proof Will Fail'}
+                  </Badge>
+                )}
+                {willSucceed === null && (
+                  <p className="text-gray-400 text-sm">Enter amount to see prediction</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {isGenerating && (
@@ -233,7 +295,7 @@ const ProofGenerator = () => {
             <CardTitle className="text-white flex items-center justify-between">
               <div className="flex items-center">
                 <FileCode className="w-5 h-5 mr-2" />
-                Generated Account Type-Specific Proof
+                Generated {selectedTypeInfo.label} Account Proof
               </div>
               <Button 
                 onClick={downloadProof}
@@ -245,7 +307,7 @@ const ProofGenerator = () => {
               </Button>
             </CardTitle>
             <CardDescription className="text-blue-200">
-              Real zero-knowledge proof generated with account type-specific compliance validation
+              Zero-knowledge proof for {selectedTypeInfo.label} account with {formatCurrency(selectedTypeInfo.limit)} limit
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -278,7 +340,7 @@ const ProofGenerator = () => {
                 {/* Account Type Distribution */}
                 {proofMetadata.accountTypes && (
                   <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <h4 className="text-white font-semibold mb-3">Account Type Distribution</h4>
+                    <h4 className="text-white font-semibold mb-3">Account Type Validation Results</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {Object.entries(proofMetadata.accountTypes).map(([type, count]) => {
                         const typeInfo = getAccountTypeInfo(type as AccountType);
@@ -287,9 +349,9 @@ const ProofGenerator = () => {
                           <div key={type} className="bg-white/5 rounded p-3">
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-blue-300 text-sm">{typeInfo.label}</span>
-                              <Badge variant="outline" className="text-xs">{count as number} accounts</Badge>
+                              <Badge variant="outline" className="text-xs">{count as number} account(s)</Badge>
                             </div>
-                            <p className="text-white text-xs">Limit: €{limit?.toLocaleString()}</p>
+                            <p className="text-white text-xs">Limit: {formatCurrency(limit || typeInfo.limit)}</p>
                           </div>
                         );
                       })}
