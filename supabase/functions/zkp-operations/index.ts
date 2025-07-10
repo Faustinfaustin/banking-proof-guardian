@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface Account {
@@ -222,13 +223,23 @@ async function verifyProof(proofStr: string, publicSignals: string[]) {
 }
 
 serve(async (req) => {
+  console.log(`Received ${req.method} request to zkp-operations`);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const requestData: ProofRequest = await req.json();
+    let requestData: ProofRequest;
+    
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request JSON:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
     console.log('ZKP operation request:', requestData.operation);
 
     let response: ProofResponse;
@@ -238,6 +249,8 @@ serve(async (req) => {
         if (!requestData.accounts || !requestData.accountTypes || !requestData.accountTypeLimits) {
           throw new Error('Missing accounts, accountTypes, or accountTypeLimits for proof generation');
         }
+        
+        console.log(`Generating proof for ${requestData.accounts.length} accounts`);
         
         const proofResult = await generateProof(
           requestData.accounts, 
@@ -258,6 +271,8 @@ serve(async (req) => {
           throw new Error('Missing proof or publicSignals for verification');
         }
         
+        console.log('Verifying proof');
+        
         const verifyResult = await verifyProof(requestData.proof, requestData.publicSignals);
         response = {
           success: true,
@@ -275,6 +290,8 @@ serve(async (req) => {
         throw new Error(`Unknown operation: ${requestData.operation}`);
     }
 
+    console.log('ZKP operation completed successfully');
+    
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -284,7 +301,7 @@ serve(async (req) => {
     
     const errorResponse: ProofResponse = {
       success: false,
-      error: error.message
+      error: error.message || 'Unknown error occurred'
     };
 
     return new Response(JSON.stringify(errorResponse), {

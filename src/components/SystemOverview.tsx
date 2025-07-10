@@ -2,161 +2,210 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Shield, Users, Lock, FileCheck, AlertTriangle, Cpu, Database, Globe } from 'lucide-react';
+import { Shield, Users, Database, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Account } from '@/hooks/useZKProof';
+import { getAccountTypeInfo, formatCurrency, ACCOUNT_TYPES } from '@/utils/accountTypes';
 
-const SystemOverview = () => {
-  const stats = [
-    { label: 'Total Accounts', value: '100', icon: Users, color: 'text-blue-400' },
-    { label: 'Compliance Rate', value: '100%', icon: Shield, color: 'text-green-400' },
-    { label: 'Proofs Generated', value: '47', icon: FileCheck, color: 'text-purple-400' },
-    { label: 'Privacy Level', value: 'Maximum', icon: Lock, color: 'text-yellow-400' },
-  ];
+interface SystemOverviewProps {
+  accounts: Account[];
+}
 
-  const techStack = [
-    {
-      name: 'Spartan Protocol',
-      description: 'Microsoft\'s trustless zkSNARK system',
-      status: 'Ready',
-      icon: Cpu,
-      color: 'bg-blue-500'
-    },
-    {
-      name: 'Circom Circuits',
-      description: 'Constraint verification for balance limits',
-      status: 'Configured',
-      icon: Database,
-      color: 'bg-purple-500'
-    },
-    {
-      name: 'Rust Backend',
-      description: 'High-performance proof generation',
-      status: 'Integration Ready',
-      icon: Globe,
-      color: 'bg-orange-500'
-    }
-  ];
+const SystemOverview = ({ accounts }: SystemOverviewProps) => {
+  // Calculate compliance statistics
+  const totalAccounts = accounts.length;
+  const accountsByType = accounts.reduce((acc, account) => {
+    const type = account.accountType || 'individual';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const complianceStats = accounts.map(account => {
+    const type = account.accountType || 'individual';
+    const typeInfo = getAccountTypeInfo(type);
+    const isCompliant = account.balance <= typeInfo.limit;
+    const utilizationRate = (account.balance / typeInfo.limit) * 100;
+    return { isCompliant, utilizationRate, type };
+  });
+
+  const compliantAccounts = complianceStats.filter(stat => stat.isCompliant).length;
+  const complianceRate = totalAccounts > 0 ? (compliantAccounts / totalAccounts) * 100 : 100;
+  const averageUtilization = totalAccounts > 0 
+    ? complianceStats.reduce((sum, stat) => sum + stat.utilizationRate, 0) / totalAccounts 
+    : 0;
 
   return (
     <div className="space-y-6">
-      {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <Card key={index} className="bg-white/10 backdrop-blur-md border-white/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-blue-200">{stat.label}</p>
-                  <p className="text-3xl font-bold text-white">{stat.value}</p>
-                </div>
-                <stat.icon className={`w-8 h-8 ${stat.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* System Status Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white flex items-center text-lg">
+              <Users className="w-5 h-5 mr-2 text-blue-400" />
+              Total Accounts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white mb-2">{totalAccounts}</div>
+            <p className="text-blue-200 text-sm">Registered in system</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white flex items-center text-lg">
+              <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
+              Compliance Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white mb-2">{Math.round(complianceRate)}%</div>
+            <Progress value={complianceRate} className="h-2 mb-2" />
+            <p className="text-blue-200 text-sm">{compliantAccounts} of {totalAccounts} compliant</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white flex items-center text-lg">
+              <TrendingUp className="w-5 h-5 mr-2 text-yellow-400" />
+              Avg Utilization
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white mb-2">{Math.round(averageUtilization)}%</div>
+            <Progress value={averageUtilization} className="h-2 mb-2" />
+            <p className="text-blue-200 text-sm">Of account limits</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* System Architecture */}
+      {/* Account Types Distribution */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center">
+            <Database className="w-5 h-5 mr-2" />
+            Account Types Distribution
+          </CardTitle>
+          <CardDescription className="text-blue-200">
+            Breakdown by Article R221-2 account categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.values(ACCOUNT_TYPES).map((typeInfo) => {
+              const count = accountsByType[typeInfo.id] || 0;
+              const percentage = totalAccounts > 0 ? (count / totalAccounts) * 100 : 0;
+              
+              return (
+                <div key={typeInfo.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-white font-medium">{typeInfo.label}</h4>
+                    <Badge variant="outline" className="text-xs">
+                      {count} account{count !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  <p className="text-blue-200 text-sm mb-3">{formatCurrency(typeInfo.limit)} limit</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-blue-300">Distribution</span>
+                      <span className="text-white">{Math.round(percentage)}%</span>
+                    </div>
+                    <Progress value={percentage} className="h-1" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System Features */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <Shield className="w-5 h-5 mr-2 text-yellow-400" />
-            Zero-Knowledge Proof Architecture
+            Zero-Knowledge Proof System Features
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Our system ensures complete privacy while maintaining regulatory compliance
+            Privacy-preserving compliance verification capabilities
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {techStack.map((tech, index) => (
-              <div key={index} className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="flex items-start space-x-3">
-                  <div className={`${tech.color} p-2 rounded-lg`}>
-                    <tech.icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-white font-semibold">{tech.name}</h3>
-                    <p className="text-sm text-blue-200 mb-2">{tech.description}</p>
-                    <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-400">
-                      {tech.status}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Compliance Flow */}
-          <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-            <h3 className="text-white font-semibold mb-4">Compliance Verification Flow</h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                <div className="flex-1">
-                  <h4 className="text-white">Account Data Hashing</h4>
-                  <p className="text-sm text-blue-200">Account balances are hashed using Poseidon for privacy</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
-                <div className="flex-1">
-                  <h4 className="text-white">Circuit Constraint Verification</h4>
-                  <p className="text-sm text-blue-200">Circom circuit ensures all balances are below $100,000</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
-                <div className="flex-1">
-                  <h4 className="text-white">Spartan Proof Generation</h4>
-                  <p className="text-sm text-blue-200">Zero-knowledge proof created without revealing individual balances</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm font-bold">4</div>
-                <div className="flex-1">
-                  <h4 className="text-white">Government Verification</h4>
-                  <p className="text-sm text-blue-200">Proof can be independently verified without accessing raw data</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Regulatory Compliance */}
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <AlertTriangle className="w-5 h-5 mr-2 text-orange-400" />
-            Regulatory Requirements
-          </CardTitle>
-        </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-              <div>
-                <h4 className="text-green-300 font-semibold">Maximum Account Balance</h4>
-                <p className="text-sm text-green-200">No user account may exceed $100,000</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="text-white font-semibold mb-3">Banking Institution Features</h4>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Account Registry Management</p>
+                    <p className="text-blue-200 text-xs">Add and manage customer accounts by type</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Type-Specific Proof Generation</p>
+                    <p className="text-blue-200 text-xs">Generate proofs by account type with specific limits</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Spartan Protocol Integration</p>
+                    <p className="text-blue-200 text-xs">WebAssembly-powered cryptographic proofs</p>
+                  </div>
+                </div>
               </div>
-              <Badge className="bg-green-500 text-white">Compliant</Badge>
             </div>
-            <div className="flex items-center justify-between p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-              <div>
-                <h4 className="text-blue-300 font-semibold">Privacy Protection</h4>
-                <p className="text-sm text-blue-200">Individual balances must remain confidential</p>
+            
+            <div className="space-y-4">
+              <h4 className="text-white font-semibold mb-3">Government Verification</h4>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Administrative Access Control</p>
+                    <p className="text-blue-200 text-xs">Secure government administrator authentication</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Zero-Knowledge Verification</p>
+                    <p className="text-blue-200 text-xs">Verify compliance without accessing account data</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Article R221-2 Compliance</p>
+                    <p className="text-blue-200 text-xs">Automated validation against regulatory limits</p>
+                  </div>
+                </div>
               </div>
-              <Badge className="bg-blue-500 text-white">Protected</Badge>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
-              <div>
-                <h4 className="text-purple-300 font-semibold">Auditability</h4>
-                <p className="text-sm text-purple-200">Compliance must be independently verifiable</p>
-              </div>
-              <Badge className="bg-purple-500 text-white">Verifiable</Badge>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Compliance Issues Alert */}
+      {complianceRate < 100 && (
+        <Card className="bg-red-500/10 backdrop-blur-md border-red-400/20">
+          <CardHeader>
+            <CardTitle className="text-red-300 flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Compliance Issues Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-200">
+              {totalAccounts - compliantAccounts} account(s) exceed their respective Article R221-2 limits. 
+              These accounts require attention to ensure regulatory compliance.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

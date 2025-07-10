@@ -74,6 +74,8 @@ export const useZKProof = () => {
         return acc;
       }, {} as Record<AccountType, number>);
       
+      console.log('Calling zkp-operations edge function...');
+      
       const { data, error } = await supabase.functions.invoke('zkp-operations', {
         body: {
           operation: 'generate',
@@ -85,7 +87,12 @@ export const useZKProof = () => {
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error('Edge function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('No data received from edge function');
       }
 
       if (!data.success) {
@@ -115,7 +122,7 @@ export const useZKProof = () => {
       console.error('Proof generation error:', error);
       toast({
         title: "Proof Generation Failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive"
       });
       return null;
@@ -139,7 +146,12 @@ export const useZKProof = () => {
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error('Edge function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('No data received from edge function');
       }
 
       if (!data.success) {
@@ -165,7 +177,7 @@ export const useZKProof = () => {
       console.error('Proof verification error:', error);
       toast({
         title: "Verification Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive"
       });
       return null;
