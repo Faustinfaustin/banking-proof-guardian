@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Hash, Shield, AlertTriangle, LogOut } from 'lucide-react';
+import { Users, Plus, Hash, Shield, AlertTriangle, LogOut, Edit, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { AccountType, ACCOUNT_TYPES, getAccountTypeInfo, formatCurrency } from '@/utils/accountTypes';
@@ -26,6 +25,9 @@ const AccountManager = ({ accounts, onAddAccount, onUpdateAccount, onDeleteAccou
   const [newBalance, setNewBalance] = useState('');
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('individual');
   const [loading, setLoading] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editBalance, setEditBalance] = useState('');
+  const [editAccountType, setEditAccountType] = useState<AccountType>('individual');
 
   const addAccount = () => {
     if (!newBalance || isNaN(Number(newBalance))) {
@@ -57,6 +59,57 @@ const AccountManager = ({ accounts, onAddAccount, onUpdateAccount, onDeleteAccou
         description: `${getAccountTypeInfo(selectedAccountType).label} account has been added with balance ${formatCurrency(balance)}.`,
       });
     }, 1000);
+  };
+
+  const hashAccount = (account: Account) => {
+    // Simple hash function for demo - in production, use proper cryptographic hashing
+    const data = `${account.balance}-${account.salt}`;
+    const hash = btoa(data).substring(0, 16);
+    
+    toast({
+      title: "Account Hashed",
+      description: `Hash: ${hash}`,
+    });
+  };
+
+  const startEditing = (index: number) => {
+    const account = accounts[index];
+    setEditingIndex(index);
+    setEditBalance(account.balance.toString());
+    setEditAccountType(account.accountType || 'individual');
+  };
+
+  const saveEdit = () => {
+    if (editingIndex === null) return;
+
+    if (!editBalance || isNaN(Number(editBalance))) {
+      toast({
+        title: "Invalid Balance",
+        description: "Please enter a valid numeric balance.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const updatedAccount: Account = {
+      ...accounts[editingIndex],
+      balance: Number(editBalance),
+      accountType: editAccountType
+    };
+
+    onUpdateAccount(editingIndex, updatedAccount);
+    setEditingIndex(null);
+    setEditBalance('');
+
+    toast({
+      title: "Account Updated",
+      description: "Account has been successfully updated.",
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditBalance('');
   };
 
   if (!isAdmin) {
@@ -268,23 +321,54 @@ const AccountManager = ({ accounts, onAddAccount, onUpdateAccount, onDeleteAccou
                     <TableHead className="text-blue-200">Balance</TableHead>
                     <TableHead className="text-blue-200">Salt</TableHead>
                     <TableHead className="text-blue-200">Status</TableHead>
+                    <TableHead className="text-blue-200">Hash Account</TableHead>
+                    <TableHead className="text-blue-200">Edit Account</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {accounts.map((account, index) => {
                     const typeInfo = getAccountTypeInfo(account.accountType || 'individual');
                     const isCompliant = account.balance <= typeInfo.limit;
+                    const isEditing = editingIndex === index;
+                    
                     return (
                       <TableRow key={index} className="border-white/20">
                         <TableCell className="text-white font-medium">ACC-{(index + 1).toString().padStart(3, '0')}</TableCell>
                         <TableCell>
-                          <div className="text-blue-300 text-sm">
-                            <div>{typeInfo.label}</div>
-                            <div className="text-xs text-gray-400">{formatCurrency(typeInfo.limit)} limit</div>
-                          </div>
+                          {isEditing ? (
+                            <Select value={editAccountType} onValueChange={(value: AccountType) => setEditAccountType(value)}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white w-48">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.values(ACCOUNT_TYPES).map((type) => (
+                                  <SelectItem key={type.id} value={type.id}>
+                                    <div>
+                                      <div>{type.label}</div>
+                                      <div className="text-xs text-gray-500">{formatCurrency(type.limit)} limit</div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="text-blue-300 text-sm">
+                              <div>{typeInfo.label}</div>
+                              <div className="text-xs text-gray-400">{formatCurrency(typeInfo.limit)} limit</div>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-white">
-                          {formatCurrency(account.balance)}
+                          {isEditing ? (
+                            <Input
+                              value={editBalance}
+                              onChange={(e) => setEditBalance(e.target.value)}
+                              className="bg-white/10 border-white/20 text-white w-32"
+                              type="number"
+                            />
+                          ) : (
+                            formatCurrency(account.balance)
+                          )}
                         </TableCell>
                         <TableCell className="text-gray-400 font-mono text-sm">
                           {account.salt.substring(0, 8)}...
@@ -296,6 +380,49 @@ const AccountManager = ({ accounts, onAddAccount, onUpdateAccount, onDeleteAccou
                           >
                             {isCompliant ? 'Compliant' : 'Non-Compliant'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => hashAccount(account)}
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Hash
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="flex space-x-2">
+                              <Button
+                                onClick={saveEdit}
+                                variant="outline"
+                                size="sm"
+                                className="bg-green-600 border-green-600 text-white hover:bg-green-700"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                onClick={cancelEdit}
+                                variant="outline"
+                                size="sm"
+                                className="bg-gray-600 border-gray-600 text-white hover:bg-gray-700"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() => startEditing(index)}
+                              variant="outline"
+                              size="sm"
+                              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
