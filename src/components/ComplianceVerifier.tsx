@@ -206,23 +206,54 @@ const ComplianceVerifier = () => {
               </div>
               
               {verificationResult.metadata && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-blue-200">Protocol:</span>
-                    <p className="text-white font-medium">{verificationResult.metadata.protocol}</p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-200">Protocol:</span>
+                      <p className="text-white font-medium">{verificationResult.metadata.protocol}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-200">Processing Time:</span>
+                      <p className="text-white font-medium">{Math.round(verificationResult.metadata.processingTime)}ms</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-200">Verified:</span>
+                      <p className="text-white font-medium">{new Date(verificationResult.metadata.timestamp).toLocaleTimeString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-blue-200">Accounts:</span>
-                    <p className="text-white font-medium">{verificationResult.metadata.accountsVerified} verified</p>
-                  </div>
-                  <div>
-                    <span className="text-blue-200">Processing Time:</span>
-                    <p className="text-white font-medium">{verificationResult.metadata.processingTime}ms</p>
-                  </div>
-                  <div>
-                    <span className="text-blue-200">Verified:</span>
-                    <p className="text-white font-medium">{new Date(verificationResult.metadata.timestamp).toLocaleTimeString()}</p>
-                  </div>
+                  
+                  {/* Account Type Verification Breakdown */}
+                  {verificationResult.metadata.accountTypes && (
+                    <div>
+                      <span className="text-blue-200 text-sm block mb-2">Accounts Verified by Type:</span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {Object.entries(verificationResult.metadata.accountTypes).map(([type, count]) => (
+                          <div key={type} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                            <div className="flex items-center justify-between">
+                              <span className="text-white text-sm font-medium">
+                                {type === 'individual' ? 'Individual' : 
+                                 type === 'association' ? 'Association' : 
+                                 type === 'large_condominium' ? 'Large Condominium' : type}
+                              </span>
+                              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-400/30">
+                                {count as number} account{(count as number) !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            {verificationResult.metadata.accountTypeLimits && verificationResult.metadata.accountTypeLimits[type] && (
+                              <div className="text-xs text-blue-200 mt-1">
+                                Limit: €{verificationResult.metadata.accountTypeLimits[type].toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-center">
+                        <span className="text-white text-sm font-medium">
+                          Total: {verificationResult.metadata.accountsVerified || 0} accounts verified
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
