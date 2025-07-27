@@ -230,14 +230,36 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Ensure request method is POST
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Method not allowed. Only POST requests are supported.' 
+    }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     let requestData: ProofRequest;
     
     try {
-      requestData = await req.json();
+      const body = await req.text();
+      if (!body || body.trim() === '') {
+        throw new Error('Request body is empty');
+      }
+      requestData = JSON.parse(body);
     } catch (parseError) {
       console.error('Failed to parse request JSON:', parseError);
-      throw new Error('Invalid JSON in request body');
+      const errorResponse = {
+        success: false,
+        error: `Invalid JSON in request body: ${parseError.message || 'Unknown parsing error'}`
+      };
+      return new Response(JSON.stringify(errorResponse), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     console.log('ZKP operation request:', requestData.operation);
