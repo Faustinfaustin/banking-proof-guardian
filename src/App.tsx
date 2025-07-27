@@ -33,7 +33,7 @@ function App() {
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center">
             <Shield className="w-8 h-8 mr-2 text-yellow-400" />
-            Banque de France - Livret A Compliance System
+            Faustin Bank - Livret A Compliance System
           </h1>
           <p className="text-blue-200">Zero-Knowledge Proof Implementation for Article R221-2 Verification</p>
         </div>
