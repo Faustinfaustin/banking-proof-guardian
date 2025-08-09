@@ -1,159 +1,60 @@
+# 🛡 Zero-Knowledge Compliance Proof in Banking  
+**Using the Spartan Protocol**  
 
-# 🛡 Spartan ZKP Microservice for BankGuard
+## 📌 Context and Motivation  
+In today’s banking environment, ensuring financial compliance while safeguarding user privacy is a significant challenge.  
+French regulations, specifically **Article R221-2 of the Monetary and Financial Code** (amended by Decree No. 2020-93 of February 5, 2020) [(Légifrance, 2020)](https://www.legifrance.gouv.fr), establish strict balance limits for **Livret A** savings accounts:  
 
-## Recent Fixes
+- **€22,950** for individuals  
+- **€76,500** for associations  
+- **Up to €100,000** for co-ownership associations with more than 100 units  
 
-* **Fixed:** `500 Unexpected end of JSON input` on GET requests
-* **Improved:** Split handlers by method (GET, POST)
-* **Added:** CORS headers, clearer error responses, and structured JSON output
+Exceeding these thresholds, except through interest capitalization, is prohibited. Consequently, banks must demonstrate compliance with these limits **without compromising sensitive client information**.  
 
-## 🛠 Quick Deployment (Railway)
+Traditional auditing and regulatory processes often require disclosing individual balances and customer identities, which jeopardizes privacy. This creates a **compliance vs. confidentiality dilemma**:  
 
-### **Step 1: Prepare Code**
+> How can a bank convincingly prove adherence to regulations without revealing private financial data?  
 
-Ensure the following files are at the root of your GitHub repo:
-
-* `Cargo.toml`
-* `Dockerfile`
-* `src/main.rs`
-
-### **Step 2: Deploy to Railway**
-
-1. Go to [Railway.app](https://railway.app)
-2. Create a new project → **Deploy from GitHub repo**
-3. Connect your repo → Railway auto-detects the Dockerfile and starts deployment
-
-### **Step 3: Copy Your Live URL**
-
-Found in:
-**Railway Dashboard → Your Service → Settings → Domains**
-Example: `https://your-service.up.railway.app`
-
-### **Step 4: Test the API**
-
-```bash
-# Root Endpoint
-curl https://your-service.up.railway.app/
-
-# Health Check
-curl https://your-service.up.railway.app/health
-
-# ZKP Proof Generation
-curl -X POST https://your-service.up.railway.app/zkp \
-  -H "Content-Type: application/json" \
-  -d '{"operation": "prove", "witness_data": [50000, 75000], "max_balance": 100000}'
-
-# ZKP Proof Verification
-curl -X POST https://your-service.up.railway.app/zkp \
-  -H "Content-Type: application/json" \
-  -d '{"operation": "verify", "proof_data": "{\"test\":\"proof\"}", "public_inputs": ["1"]}'
-```
-
-##  API Endpoints
-
-| Endpoint  | Method  | Description            |
-| --------- | ------- | ---------------------- |
-| `/`       | GET     | Basic service metadata |
-| `/health` | GET     | Health check           |
-| `/zkp`    | POST    | Prove or verify proof  |
-| `/zkp`    | OPTIONS | CORS preflight check   |
-
-### Example JSON Response (GET `/health`)
-
-```json
-{
-  "status": "healthy",
-  "service": "spartan-zkp",
-  "version": "0.1.0",
-  "timestamp": "2024-12-07T14:30:00Z",
-  "uptime": "online",
-  "endpoints": ["GET /", "GET /health", "POST /zkp", "OPTIONS /zkp"]
-}
-```
+Our solution: **A privacy-preserving compliance mechanism using Spartan zkSNARKs**.  
 
 ---
 
-##  Integrate with FaustinBank ZKP
+## 🎯 Objectives of the Solution  
+By leveraging **Spartan**, an efficient, general-purpose zero-knowledge SNARK protocol with **no trusted setup**, we enable banks to:  
 
-1. Open **BankGuard ZKP**
-2. Go to the **WASM** tab
-3. Enter your base service URL (e.g., `https://your-service.up.railway.app`)
-4. Click **Test Connection** – status should be **Connected**
+- ✅ Generate a **zero-knowledge proof** that no account exceeds the legal thresholds  
+- ✅ Ensure balances are **hashed** to prevent manipulation  
+- ✅ Keep both balances and identities **confidential**  
+- ✅ Allow **auditors** to independently verify proofs  
+- ✅ Guarantee proofs reflect **authentic and untampered data**  
+- ✅ Ensure **integrity and non-manipulation** of account data  
 
-### 💻 Edit Locally with Your IDE
-
-```bash
-# Step 1: Clone the project
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
-
-# Step 2: Install dependencies
-npm install
-
-# Step 3: Start development server
-npm run dev
-```
-
-### ✍️ Edit on GitHub
-
-* Open the file you want to edit
-* Click the 🖉 pencil icon
-* Edit → Commit → Done
-
-### 💡 Use GitHub Codespaces
-
-* Go to your repo → Click **Code** → **Codespaces** → **New codespace**
-* Edit in browser and push changes
+This approach aligns with **GDPR principles** and strengthens compliance assurance while preserving privacy.  
 
 ---
 
-## 🧪 Technologies Used
+# 🚀 Spartan ZKP Microservice – BankGuard  
 
-This project combines a Rust-based backend with a modern frontend stack:
-
-* **Rust**, **Actix-web**, **Spartan ZKP (simulated)**
-* **Frontend (Lovable project):**
-
-  * Vite + TypeScript + React
-  * Tailwind CSS + shadcn/ui
-
----
-## 🔐 Next Steps for Production
-
-* Add API key authentication or JWT verification
-* Integrate real Spartan ZKP library from Microsoft for production proofs
-* Implement logging, rate limiting, and monitoring tools
+## 🔧 Recent Fixes  
+- **Fixed:** `500 Unexpected end of JSON input` on GET requests  
+- **Improved:** Split handlers by method (GET, POST)  
+- **Added:** CORS headers, clearer error responses, and structured JSON output  
 
 ---
 
-## 🧯 Troubleshooting
+## ⚡ Quick Deployment on Railway  
 
-| Problem                    | Solution                                   |
-| -------------------------- | ------------------------------------------ |
-| 500 JSON Error on GET      | Ensure you're not parsing JSON on GET      |
-| CORS issues                | Verify `OPTIONS` is handled properly       |
-| Rust build failures        | Check logs under **Railway → Deployments** |
-| POST `/zkp` not responding | Confirm request payload structure          |
+### **1️⃣ Prepare Code**  
+Ensure the following files are at the root of your GitHub repo:  
+- `Cargo.toml`  
+- `Dockerfile`  
+- `src/main.rs`  
 
----
+### **2️⃣ Deploy to Railway**  
+1. Go to [Railway.app](https://railway.app)  
+2. Create a new project → **Deploy from GitHub repo**  
+3. Connect your repo → Railway auto-detects the Dockerfile and deploys automatically  
 
-##  Environment Variables (Railway)
-
-| Variable   | Purpose                       |
-| ---------- | ----------------------------- |
-| `PORT`     | Set by Railway (usually 8080) |
-| `HOST`     | Defaults to `0.0.0.0`         |
-| `RUST_LOG` | Log level (e.g., info)        |
-
----
-
-## 👏 Acknowledgments
-
-* Spartan Protocol – Microsoft Research
-* Railway Deployment Platform
-* Lovable – AI-driven UI generation
-* Actix Web – Rust server framework
-
----
-
-
+### **3️⃣ Copy Your Live URL**  
+Find it under:  
+`Railway Dashboard → Your Service → Settings → Domains`  
