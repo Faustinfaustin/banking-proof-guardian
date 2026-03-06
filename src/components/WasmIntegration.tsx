@@ -161,11 +161,11 @@ const WasmIntegration = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => window.open('https://github.com/Microsoft/Spartan', '_blank')}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <ExternalLink className="w-3 h-3 mr-1" />
-              Microsoft Spartan
+            onClick={() => window.open('https://github.com/greyhoundspartan-svg/Spartan-PQ/tree/main/Spartan-PQ', '_blank')}
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            Spartan-PQ
             </Button>
             <Button 
               variant="outline"
