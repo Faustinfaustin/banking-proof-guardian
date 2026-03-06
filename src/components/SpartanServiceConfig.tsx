@@ -18,7 +18,7 @@ const SpartanServiceConfig = () => {
     if (!serviceUrl.trim()) {
       toast({
         title: "Service URL Required",
-        description: "Please enter the Spartan service URL",
+        description: "Please enter the Spartan-PQ service URL",
         variant: "destructive"
       });
       return;
@@ -59,7 +59,7 @@ const SpartanServiceConfig = () => {
         setConnectionStatus('connected');
         toast({
           title: "Connection Successful",
-          description: "Successfully connected to Spartan service",
+          description: "Successfully connected to Spartan-PQ service",
         });
       } else {
         const errorText = await response.text();
@@ -116,12 +116,12 @@ const SpartanServiceConfig = () => {
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center">
             <Settings className="w-5 h-5 mr-2 text-orange-400" />
-            External Spartan Service Configuration
+            External Spartan-PQ Service Configuration
           </div>
           {getStatusBadge()}
         </CardTitle>
         <CardDescription className="text-blue-200">
-          Configure connection to external Rust microservice implementing Microsoft's Spartan protocol
+          Configure connection to external Rust microservice implementing the Spartan-PQ post-quantum protocol
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -129,13 +129,13 @@ const SpartanServiceConfig = () => {
         <div className="space-y-2">
           <label className="text-white font-medium">Service URL</label>
           <Input
-            placeholder="https://your-spartan-service.up.railway.app"
+            placeholder="https://your-spartan-pq-service.up.railway.app"
             value={serviceUrl}
             onChange={(e) => setServiceUrl(e.target.value)}
             className="bg-black/30 border-white/20 text-gray-300"
           />
           <p className="text-sm text-blue-200">
-            URL of the deployed Rust microservice implementing Spartan protocol
+            URL of the deployed Rust microservice implementing Spartan-PQ protocol
           </p>
         </div>
 
@@ -209,11 +209,11 @@ const SpartanServiceConfig = () => {
           <Button 
             variant="outline"
             size="sm"
-            onClick={() => window.open('https://github.com/Microsoft/Spartan', '_blank')}
+            onClick={() => window.open('https://github.com/greyhoundspartan-svg/Spartan-PQ/tree/main/Spartan-PQ', '_blank')}
             className="bg-white/10 border-white/20 text-white hover:bg-white/20"
           >
             <ExternalLink className="w-3 h-3 mr-1" />
-            Microsoft Spartan
+            Spartan-PQ
           </Button>
           <Button 
             variant="outline"

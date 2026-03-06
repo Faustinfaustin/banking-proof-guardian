@@ -38,8 +38,8 @@ const WasmIntegration = () => {
         setWasmStatus({
           loaded: false, // Will be true when actual WASM is integrated
           functions: [
-            'spartan_prove',
-            'spartan_verify', 
+            'spartan_pq_prove',
+            'spartan_pq_verify',
             'poseidon_hash',
             'verify_constraints'
           ],
@@ -74,7 +74,7 @@ const WasmIntegration = () => {
             WebAssembly Integration Status
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Alternative WebAssembly integration for Spartan protocol (future option)
+            Alternative WebAssembly integration for Spartan-PQ protocol (future option)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -97,7 +97,7 @@ const WasmIntegration = () => {
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
               <div>
-                <h4 className="text-white font-medium">External Spartan Service</h4>
+                <h4 className="text-white font-medium">External Spartan-PQ Service</h4>
                 <p className="text-sm text-blue-200">
                   Currently integrated with external Rust microservice
                 </p>
@@ -123,7 +123,7 @@ const WasmIntegration = () => {
           <div className="space-y-3">
             <h4 className="text-white font-medium flex items-center">
               <Code className="w-4 h-4 mr-2" />
-              Spartan Protocol Functions
+              Spartan-PQ Protocol Functions
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {wasmStatus.functions.map((func) => (
@@ -161,11 +161,11 @@ const WasmIntegration = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => window.open('https://github.com/Microsoft/Spartan', '_blank')}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <ExternalLink className="w-3 h-3 mr-1" />
-              Microsoft Spartan
+            onClick={() => window.open('https://github.com/greyhoundspartan-svg/Spartan-PQ/tree/main/Spartan-PQ', '_blank')}
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            Spartan-PQ
             </Button>
             <Button 
               variant="outline"

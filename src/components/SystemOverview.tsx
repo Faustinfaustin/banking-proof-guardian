@@ -152,8 +152,8 @@ const SystemOverview = ({ accounts }: SystemOverviewProps) => {
                 <div className="flex items-start space-x-3">
                   <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
                   <div>
-                    <p className="text-white text-sm font-medium">Spartan Protocol Integration</p>
-                    <p className="text-blue-200 text-xs">WebAssembly-powered cryptographic proofs</p>
+                    <p className="text-white text-sm font-medium">Spartan-PQ Protocol Integration</p>
+                    <p className="text-blue-200 text-xs">Post-quantum WebAssembly-powered cryptographic proofs</p>
                   </div>
                 </div>
               </div>

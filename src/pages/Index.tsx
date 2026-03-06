@@ -65,7 +65,7 @@ const Index = () => {
           </h2>
           <p className="text-blue-200 text-lg max-w-3xl">
             Prove regulatory compliance without revealing sensitive financial data. 
-            Our system uses WebAssembly-powered Spartan zkSNARK protocol to verify that no account exceeds 
+            Our system uses WebAssembly-powered Spartan-PQ post-quantum zkSNARK protocol to verify that no account exceeds 
             their respective limits while maintaining complete privacy.
           </p>
         </div>
