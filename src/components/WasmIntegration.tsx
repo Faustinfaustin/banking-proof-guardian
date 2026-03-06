@@ -123,7 +123,7 @@ const WasmIntegration = () => {
           <div className="space-y-3">
             <h4 className="text-white font-medium flex items-center">
               <Code className="w-4 h-4 mr-2" />
-              Spartan Protocol Functions
+              Spartan-PQ Protocol Functions
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {wasmStatus.functions.map((func) => (
