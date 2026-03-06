@@ -121,7 +121,7 @@ const SpartanServiceConfig = () => {
           {getStatusBadge()}
         </CardTitle>
         <CardDescription className="text-blue-200">
-          Configure connection to external Rust microservice implementing Microsoft's Spartan protocol
+          Configure connection to external Rust microservice implementing the Spartan-PQ post-quantum protocol
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
