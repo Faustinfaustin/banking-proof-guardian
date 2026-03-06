@@ -116,7 +116,7 @@ const SpartanServiceConfig = () => {
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center">
             <Settings className="w-5 h-5 mr-2 text-orange-400" />
-            External Spartan Service Configuration
+            External Spartan-PQ Service Configuration
           </div>
           {getStatusBadge()}
         </CardTitle>
