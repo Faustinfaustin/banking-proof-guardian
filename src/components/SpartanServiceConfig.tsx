@@ -135,7 +135,7 @@ const SpartanServiceConfig = () => {
             className="bg-black/30 border-white/20 text-gray-300"
           />
           <p className="text-sm text-blue-200">
-            URL of the deployed Rust microservice implementing Spartan protocol
+            URL of the deployed Rust microservice implementing Spartan-PQ protocol
           </p>
         </div>
 
