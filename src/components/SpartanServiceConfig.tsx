@@ -18,7 +18,7 @@ const SpartanServiceConfig = () => {
     if (!serviceUrl.trim()) {
       toast({
         title: "Service URL Required",
-        description: "Please enter the Spartan service URL",
+        description: "Please enter the Spartan-PQ service URL",
         variant: "destructive"
       });
       return;
