@@ -74,7 +74,7 @@ const WasmIntegration = () => {
             WebAssembly Integration Status
           </CardTitle>
           <CardDescription className="text-blue-200">
-            Alternative WebAssembly integration for Spartan protocol (future option)
+            Alternative WebAssembly integration for Spartan-PQ protocol (future option)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
