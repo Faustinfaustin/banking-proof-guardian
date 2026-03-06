@@ -62,7 +62,7 @@ function App() {
             </TabsTrigger>
             <TabsTrigger value="spartan" className="data-[state=active]:bg-white/20 text-white">
               <Settings className="w-4 h-4 mr-2" />
-              Spartan
+              Spartan-PQ
             </TabsTrigger>
           </TabsList>
 
