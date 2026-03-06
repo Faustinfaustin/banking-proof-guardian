@@ -38,8 +38,8 @@ const WasmIntegration = () => {
         setWasmStatus({
           loaded: false, // Will be true when actual WASM is integrated
           functions: [
-            'spartan_prove',
-            'spartan_verify', 
+            'spartan_pq_prove',
+            'spartan_pq_verify',
             'poseidon_hash',
             'verify_constraints'
           ],
