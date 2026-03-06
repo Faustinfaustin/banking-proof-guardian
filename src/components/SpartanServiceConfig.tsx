@@ -59,7 +59,7 @@ const SpartanServiceConfig = () => {
         setConnectionStatus('connected');
         toast({
           title: "Connection Successful",
-          description: "Successfully connected to Spartan service",
+          description: "Successfully connected to Spartan-PQ service",
         });
       } else {
         const errorText = await response.text();
