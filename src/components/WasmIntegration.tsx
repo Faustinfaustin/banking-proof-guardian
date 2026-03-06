@@ -97,7 +97,7 @@ const WasmIntegration = () => {
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
               <div>
-                <h4 className="text-white font-medium">External Spartan Service</h4>
+                <h4 className="text-white font-medium">External Spartan-PQ Service</h4>
                 <p className="text-sm text-blue-200">
                   Currently integrated with external Rust microservice
                 </p>
