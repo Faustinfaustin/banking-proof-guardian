@@ -129,7 +129,7 @@ const SpartanServiceConfig = () => {
         <div className="space-y-2">
           <label className="text-white font-medium">Service URL</label>
           <Input
-            placeholder="https://your-spartan-service.up.railway.app"
+            placeholder="https://your-spartan-pq-service.up.railway.app"
             value={serviceUrl}
             onChange={(e) => setServiceUrl(e.target.value)}
             className="bg-black/30 border-white/20 text-gray-300"
